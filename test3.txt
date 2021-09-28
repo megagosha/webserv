@@ -1,0 +1,48 @@
+#CONFIG
+
+#listen to specify host and port
+#if port not specified listen on 80
+#if listen not specifed -> error
+#error_page: error_code relative_path (relative to root)
+server {
+    listen 127.0.0.1;
+    port 80;
+    error_page 404 /relative_path_to_file;
+    client_max_body_size 1024;
+
+ location / {
+    root /tmp/www;
+    methods POST GET DELETE;
+    autoindex on; #turned on by default;
+    index index.html; #specify default file
+    file_upload /path/to/dir;
+ }
+ location /index.php
+ {
+    return /index.html;
+ }
+ location *.php {
+ cgi_pass /path/to/cgiiii; #specify full path
+ }
+}
+
+server {
+    listen 127.0.0.1;
+    error_page 404 /relative_path_to_file;
+    client_max_body_size 1024;
+
+ location / {
+    root /tmp/www;
+    methods POST GET DELETE;
+    autoindex on; #turned on by default
+    index index.html; #specify default file
+    file_upload /path/to/dir;
+ }
+ location /index.php
+ {
+    return /index.html;
+ }
+ location *.php {
+ cgi_pass /path/to/cgijjk; #specify full path
+ }
+}
