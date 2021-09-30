@@ -181,6 +181,13 @@ public:
                 throw VirtualServerException("Syntax error: }");
             skip_tok(it, end, 1);
         }
+
+        HttpResponse generateResponse(HttpRequest &request)
+        {
+        	HttpResponse response();
+
+
+        }
     };
 
 private:

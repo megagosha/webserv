@@ -130,7 +130,6 @@ int main(void)
 			//received request
 		else if (updates.second->ident != fd && updates.second->filter == EVFILT_READ)
 		{
-
 			std::string req(recv(updates.second->data, updates.second->ident));
 			std::cout << "Recieved bytes: " << updates.second->data << std::endl;
 			try
