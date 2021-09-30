@@ -4,6 +4,9 @@
 #include <string>
 #include <cstdio>
 #include <sys/stat.h>
+#include <string>
+#include <iostream>
+#include <unistd.h>
 
 bool fileExistsAndReadable (const std::string& name) {
     if (FILE *file = fopen(name.c_str(), "r")) {
@@ -14,6 +17,15 @@ bool fileExistsAndReadable (const std::string& name) {
     }
 }
 
+std::string recv(int bytes, int socket)
+{
+    std::string output(bytes, 0);
+    if (read(socket, &output[0], bytes) < 0)
+    {
+        std::cerr << "Failed to read data from socket.\n";
+    }
+    return output;
+}
 
 bool fileExistsAndExecutable(const char *file)
 {

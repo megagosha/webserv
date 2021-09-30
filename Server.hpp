@@ -17,11 +17,12 @@
 #include <list>
 #include "VirtualServer.hpp"
 
-#define MAX_AWAIT_CONN 100;
-#define MAX_KQUEUE_EV 100;
+#define MAX_AWAIT_CONN 100
+#define MAX_KQUEUE_EV 100
 
 class Server
 {
+
 
 	std::string config_res;
 	std::list<std::string> tok_list;
@@ -205,6 +206,26 @@ public:
 			i++;
 		}
 	}
+    HttpResponse generateResponse(HttpRequest &request)
+    {
+        HttpResponse response;
+        VirtualServer serv;
+
+        std::map<std::string, std::string>::iterator rq_it;
+        rq_it = request.header_fields.find("Host");
+        if (rq_it == request.header_fields.end())
+        {
+            //@todo return  400 ! implement error constructors for HttpResonse
+        }
+        for(std::map<int, VirtualServer>::iterator it = servers.begin(); it != servers.end(); ++it)
+        {
+            if (it->second.getServerName() == rq_it->second && )
+            {
+
+            }
+        }
+
+    }
 
 	void process_response(std::pair<int, struct kevent *> &updates)
 	{

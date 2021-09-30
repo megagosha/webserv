@@ -181,20 +181,13 @@ public:
                 throw VirtualServerException("Syntax error: }");
             skip_tok(it, end, 1);
         }
-
-        HttpResponse generateResponse(HttpRequest &request)
-        {
-        	HttpResponse response();
-
-
-        }
     };
 
 private:
     uint16_t _port;
     in_addr_t _host;
     std::string _server_name;
-    bool _def_config;
+    bool _def_config; //@todo delete field
     std::map<short, std::string> _error_pages;
     std::map<std::string, Location> _locations;
     unsigned long _body_size_limit;
@@ -338,6 +331,11 @@ public:
         path = *it;
         loc.setLocation(it, end, path);
         location.insert(std::make_pair(path, loc));
+    }
+
+    HttpResponse generate(const HttpRequest &request)
+    {
+
     }
 
     class VirtualServerException : public std::exception {
