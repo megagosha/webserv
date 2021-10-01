@@ -333,9 +333,33 @@ public:
         location.insert(std::make_pair(path, loc));
     }
 
-    HttpResponse generate(const HttpRequest &request)
-    {
-
+    HttpResponse generate(const HttpRequest &request, std::string &host) {
+//        Split request "/path/to/folder/index.html" becomes "/" , "path", "to", "folder", "index.html"
+//        Max precision 5;
+//        Go through each location and count precision
+//        Select best match
+        std::string req_no_query = request.request_uri;
+        req_no_query = req_no_query.substr(0, req_no_query.find('?'));
+        if (req_no_query.empty())
+            return (HttpResponse(400));
+        std::pair<std::string, bool> norm_path = normalize_path(req_no_query);
+        if (!norm_path.second)
+            return (HttpResponse(400));
+        std::pair<int, int> res;
+        int i = 0;
+        int best = 0;
+        int best_loc = 0;
+        int cur_loc = -1;
+        for (std::map<std::string, Location>::iterator  it = _locations.begin(); it != _locations.end(); ++it)
+        {
+            j = 0;
+            while (i < it->first.size())
+            {
+                if (i >= norm_path.first.size() || it->first[i] != norm_path.first[i])
+                    break;
+                ++i;
+            }
+        }
     }
 
     class VirtualServerException : public std::exception {

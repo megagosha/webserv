@@ -101,7 +101,8 @@ public:
     void clear() {
         close(_socket_fd);
     }
-
+    //@todo make sure virtual servers in each socket have unique server_name (only one empty server name per ip:port pair)
+    //@todo validate that each virtual server has at least one location and server root
     HttpResponse generate(const HttpRequest &request)
     {
         std::map<std::string, std::string>::iterator it = request.header_fields.find("Host");
@@ -111,13 +112,15 @@ public:
             //@todo generate 400
         }
         if (it->second.empty())
-            _default_config.generate(request);
-        if ()
+            _default_config.generate(request, "");
+        //truncate port value in host value field
+        std::string host_value = it->second.substr(0, it->second.find(':'));
+
         std::map<std::string, VirtualServer>::iterator ity;
         ity = _virtual_servers.find(it->second);
         if (ity == _virtual_servers.end())
-           return (_default_config.generate(request));
-        return (ity->second->generate(request));
+           return (_default_config.generate(request, ""));
+        return (ity->second->generate(request, host_value));
     }
     ~Socket() {
     }
