@@ -348,16 +348,24 @@ public:
         std::pair<int, int> res;
         int i = 0;
         int best = 0;
-        int best_loc = 0;
-        int cur_loc = -1;
+        int cur_best = 0;
+        std::map<std::string, Location>::iterator best_match;
         for (std::map<std::string, Location>::iterator  it = _locations.begin(); it != _locations.end(); ++it)
         {
-            j = 0;
+            i = 0;
+            cur_best = 0;
             while (i < it->first.size())
             {
                 if (i >= norm_path.first.size() || it->first[i] != norm_path.first[i])
                     break;
+                if (it->first[i] == '/')
+                    cur_best++;
                 ++i;
+            }
+            if (best < cur_best)
+            {
+                best = cur_best;
+                best_match = it;
             }
         }
     }
