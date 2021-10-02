@@ -3,6 +3,8 @@
 #listen to specify host and port
 #if port not specified listen on 80
 #if listen not specifed -> error
+#root directories should be set up with out trailing "/"
+#location paths should end with "/" if designed for folders
 #error_page: error_code relative_path (relative to root)
 server {
     listen 127.0.0.1;
@@ -17,14 +19,26 @@ server {
     index index.html; #specify default file
     file_upload /path/to/dir;
  }
- location /index.php
+ location /folder/one/two/
  {
-    return /index.html;
+    root /index/tmp;
  }
  location *.php {
  cgi_pass /path/to/cgiiii; #specify full path
  }
 }
+
+server {
+    listen 127.0.0.1;
+    port 80;
+    server_name google.ru
+    }
+
+    server {
+        listen 127.0.0.1;
+        port 80;
+        server_name yandex.ru
+        }
 
 server {
     listen 127.0.0.1;

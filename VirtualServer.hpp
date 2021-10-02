@@ -106,6 +106,20 @@ public:
         ~Location() {
         }
 
+        bool methodAllowed(std::string &method)
+        {
+            switch (VirtualServer::hash_method(method)) {
+                case GET:
+                    return (_methods[0]);
+                case POST:
+                    return (_methods[1]);
+                case DELETE:
+                    return (_methods[2]);
+                default:
+                    return (false);
+            }
+        }
+
         void setLocation(std::list<std::string>::iterator &it,
                          std::list<std::string>::iterator &end, std::string path) {
 
@@ -334,40 +348,77 @@ public:
     }
 
     HttpResponse generate(const HttpRequest &request, std::string &host) {
-//        Split request "/path/to/folder/index.html" becomes "/" , "path", "to", "folder", "index.html"
-//        Max precision 5;
-//        Go through each location and count precision
-//        Select best match
         std::string req_no_query = request.request_uri;
         req_no_query = req_no_query.substr(0, req_no_query.find('?'));
         if (req_no_query.empty())
             return (HttpResponse(400));
+        //CHECK IF CGI REQUEST
         std::pair<std::string, bool> norm_path = normalize_path(req_no_query);
         if (!norm_path.second)
             return (HttpResponse(400));
-        std::pair<int, int> res;
         int i = 0;
         int best = 0;
         int cur_best = 0;
-        std::map<std::string, Location>::iterator best_match;
-        for (std::map<std::string, Location>::iterator  it = _locations.begin(); it != _locations.end(); ++it)
+        std::map<std::string, Location>::iterator  it = _locations.begin();
+        std::map<std::string, Location>::iterator  search_res;
+        for (; it != _locations.end(); ++it)
         {
             i = 0;
-            cur_best = 0;
+            ++cur_best;
+            std::string cur_string = it->first;
             while (i < it->first.size())
             {
-                if (i >= norm_path.first.size() || it->first[i] != norm_path.first[i])
+                if (i >= norm_path.first.size() || cur_string[i] != norm_path.first[i])
                     break;
-                if (it->first[i] == '/')
-                    cur_best++;
+                if (cur_string[i] == '/')
+                    ++cur_best;
                 ++i;
             }
-            if (best < cur_best)
+            if (i == it->first.size())
             {
-                best = cur_best;
-                best_match = it;
+                if (i == norm_path.size()) {
+                    cur_best = best;
+                    search_res = it;
+                    break;
+                }
+                if (cur_best > best) {
+                    search_res = it;
+                    best = cur_best;
+                }
             }
         }
+        if (best == 0)
+            return (HttpResponse(404));
+        else
+        {
+            if (!it->second.methodAllowed(request.method)) {
+                //https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.5
+                //@todo construct Allow header with supported methods;
+                return (HttpResponse(405));
+            }
+            req_no_query = str.replace(9,5,str2);
+            it->second.getRoot()
+            if (*request.request_uri.rend() == '/')
+            {
+                if (it->second.isAutoindexOn())
+                {
+                    //create directory listing page
+                    return ();
+                }
+                //index enabled
+                std::string index = it->second.getIndex();
+                if (!index.empty())
+                {
+                    req_no_query + index;
+                }
+                return (HttpResponse(400));
+            }
+           //check if method is allowed
+           //check if request is to file or folder
+           // if folder check if autoindex is enabled
+           // check if
+        }
+            //process request
     }
 
     class VirtualServerException : public std::exception {
