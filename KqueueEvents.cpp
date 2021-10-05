@@ -1,0 +1,106 @@
+//
+// Created by Elayne Debi on 9/8/21.
+//
+
+#include "KqueueEvents.hpp"
+
+
+KqueueEvents::KqueueEvents() : _max_size(0)
+{};
+
+KqueueEvents::KqueueEvents(int max_size) : _max_size(max_size)
+{
+	_queue_fd = kqueue();
+	if (_queue_fd == -1)
+		throw KqueueException();
+	_w_event = new struct kevent;
+	_res_event = new struct kevent[_max_size];
+}
+
+KqueueEvents::KqueueEvents(int max_size, int connection_socket) : _max_size(max_size)
+{
+	_fds.insert(connection_socket);
+	_queue_fd = kqueue();
+	if (_queue_fd == -1)
+		throw KqueueException();
+	_w_event = new struct kevent;
+	_res_event = new struct kevent[_max_size];
+	EV_SET(_w_event, connection_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
+		throw KqueueException();
+}
+
+void KqueueEvents::init(void)
+{
+	_queue_fd = kqueue();
+	if (_queue_fd == -1)
+		throw KqueueException();
+}
+
+KqueueEvents::KqueueEvents(KqueueEvents const &ke) : _max_size(ke._max_size)
+{
+	_queue_fd = ke._queue_fd;
+	_fds = ke._fds;
+	_w_event = new struct kevent;
+	_res_event = new struct kevent[_max_size];
+	_w_event = ke._w_event;
+	_res_event = ke._res_event;
+}
+
+KqueueEvents &KqueueEvents::operator=(KqueueEvents const &ke)
+{
+	if (this == &ke)
+		return (*this);
+	if (_max_size != ke._max_size)
+		throw KqueueException();
+	_queue_fd = ke._queue_fd;
+	_fds = ke._fds;
+	_w_event = ke._w_event;
+	_w_event = ke._res_event;
+	return (*this);
+}
+
+KqueueEvents::~KqueueEvents()
+{
+	delete _w_event;
+	delete[] _res_event;
+}
+
+void KqueueEvents::addFd(int fd, bool write)
+{
+	_fds.insert(fd);
+	EV_SET(_w_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
+		throw KqueueException();
+	if (write)
+	{
+		EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+		if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
+			throw KqueueException();
+	}
+}
+
+void KqueueEvents::deleteFd(int fd, bool write)
+{
+	_fds.erase(fd);
+	EV_SET(_w_event, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	kevent(_queue_fd, _w_event, 1, NULL, 0, NULL);
+	if (write)
+	{
+		EV_SET(_w_event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+		kevent(_queue_fd, _w_event, 1, NULL, 0, NULL);
+	}
+}
+
+std::pair<int, struct kevent *> KqueueEvents::getUpdates(void)
+{
+	struct timespec tmout = {5,     /* block for 5 seconds at most */
+							 0};
+	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);
+	return (std::make_pair(res, _res_event));
+}
+
+const char *KqueueEvents::KqueueException::what() throw()
+{
+	return (std::strerror(errno));
+}

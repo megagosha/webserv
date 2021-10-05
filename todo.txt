@@ -1,0 +1,2 @@
+1. convert http methods to digit, drop strings
+2.
