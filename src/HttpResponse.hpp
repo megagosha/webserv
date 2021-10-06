@@ -14,7 +14,15 @@
 #include <string>
 #include <cstddef>
 
+//
+//class VirtualServer
+//{
+//public:
+//	class Location;
+//};
 class VirtualServer;
+
+class Location;
 
 class HttpResponse
 {
@@ -47,7 +55,7 @@ public:
 	//error response constructor
 	HttpResponse(short n, const VirtualServer &server);
 
-	HttpResponse(HttpRequest &request, std::string &request_uri, VirtualServer &server, VirtualServer::Location &loc);
+	HttpResponse(const HttpRequest &request, std::string &request_uri, VirtualServer &server, Location &loc);
 
 	HttpResponse(const HttpResponse &rhs);
 
@@ -68,7 +76,7 @@ public:
 	const std::vector<char> &getBody() const;
 
 	size_t getBodySize() const;
-
+};
 //	HttpResponse(HttpRequest &x)
 //	{
 //		_proto = "HTTP/1.1";
@@ -106,6 +114,5 @@ public:
 //			file.close();
 //		}
 //	}
-};
 
-#endif //UNTITLED_HTTPRESPONSE_HPP
+#endif

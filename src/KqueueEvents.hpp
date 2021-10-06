@@ -41,7 +41,7 @@ public:
 
 	class KqueueException : public std::exception
 	{
-		virtual const char *what() throw();
+		virtual const char *what() const _NOEXCEPT;
 	};
 };
 

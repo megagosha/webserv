@@ -40,7 +40,6 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 	init_keys();
 	if (is)
 	{
-		size_t pos;
 		std::string tok;
 		tok.reserve(50);
 		while (std::getline(is, line))
@@ -112,11 +111,11 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 				serv.setLocation(it, end);
 				continue;
 			}
+				++it;
 			//@todo THROW ERROR if nothing else worked
 		}
 		validate(serv);
 		apply(serv);
-		++it;
 	}
 	run();
 }
@@ -157,7 +156,7 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 					++i;
 					continue;
 				}
-				std::string req(recv(updates.second[i].data, updates.second[i].ident));
+				std::string req(FtUtils::recv(updates.second[i].data, updates.second[i].ident));
 				HttpRequest request(req);
 				_pending_response.insert(std::make_pair(updates.second->ident, ity->second->second.generate(request)));
 			}
@@ -301,7 +300,7 @@ Server::Server(const Server &rhs) :
 		_tok_list(rhs._tok_list),
 		_config_keys(rhs._config_keys),
 		_pending_response(rhs._pending_response),
-		_kq(_kq)
+		_kq(rhs._kq)
 {}
 
 

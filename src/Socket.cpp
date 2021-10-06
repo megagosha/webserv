@@ -66,9 +66,9 @@ Socket::Socket(uint32_t ip,
 			   uint16_t port,
 			   int fd,
 			   VirtualServer &serv) :
+		_socket_fd(fd),
 		_ip(ip),
 		_port(port),
-		_socket_fd(fd),
 		_default_config(serv)
 {
 	appendVirtualServer(serv);
@@ -122,15 +122,15 @@ HttpResponse Socket::generate(const HttpRequest &request)
 		//@todo generate 400
 	}
 	if (it->second.empty())
-		_default_config.generate(request, "");
+		_default_config.generate(request);
 	//truncate port value in host value field
 	std::string host_value = it->second.substr(0, it->second.find(':'));
 
 	std::map<std::string, VirtualServer>::iterator ity;
 	ity = _virtual_servers.find(it->second);
 	if (ity == _virtual_servers.end())
-		return (_default_config.generate(request, ""));
-	return (ity->second.generate(request, host_value));
+		return (_default_config.generate(request));
+	return (ity->second.generate(request));
 }
 
 Socket::~Socket()
@@ -139,11 +139,14 @@ Socket::~Socket()
 
 Socket &Socket::operator=(const Socket &rhs)
 {
+	if (this == &rhs)
+		return (*this);
 	_socket_fd = rhs.getSocketFd();
 	_ip = rhs.getIp();
 	_port = rhs.getPort();
 	_default_config = rhs.getDefaultConfig();
 	_virtual_servers = rhs.getVirtualServers();
+	return (*this);
 }
 
 Socket::Socket(const Socket &rhs) : _socket_fd(rhs._socket_fd),

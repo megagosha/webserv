@@ -1,9 +1,9 @@
 //
 // Created by Elayne Debi on 9/16/21.
 //
-#include "utils.hpp"
+#include "Utils.hpp"
 
-bool fileExistsAndReadable(const std::string &name)
+bool FtUtils::fileExistsAndReadable(const std::string &name)
 {
 	if (FILE *file = fopen(name.c_str(), "r"))
 	{
@@ -13,9 +13,9 @@ bool fileExistsAndReadable(const std::string &name)
 	{
 		return false;
 	}
-}
+};
 
-std::string recv(int bytes, int socket)
+std::string FtUtils::recv(int bytes, int socket)
 {
 	std::string output(bytes, 0);
 	if (read(socket, &output[0], bytes) < 0)
@@ -25,7 +25,7 @@ std::string recv(int bytes, int socket)
 	return output;
 }
 
-bool fileExistsAndExecutable(const char *file)
+bool FtUtils::fileExistsAndExecutable(const char *file)
 {
 	struct stat st = {};
 
@@ -36,7 +36,7 @@ bool fileExistsAndExecutable(const char *file)
 	return false;
 }
 
-std::list<std::string> str_tokenizer(const std::string &s, char c)
+std::list<std::string> FtUtils::strTokenizer(const std::string &s, char c)
 {
 	std::list<std::string> tokens;
 	std::string res;
@@ -60,7 +60,7 @@ std::list<std::string> str_tokenizer(const std::string &s, char c)
 	return (tokens);
 }
 
-std::string &normalize_path(std::string &s)
+std::string &FtUtils::normalizePath(std::string &s)
 {
 	std::list<std::string> tokens;
 	std::list<std::string>::reverse_iterator tmp1;
@@ -73,7 +73,7 @@ std::string &normalize_path(std::string &s)
 		return (s);
 	}
 
-	tokens = str_tokenizer(s, '/');
+	tokens = strTokenizer(s, '/');
 	for (; it != tokens.rend(); ++it)
 	{
 		tmp1 = it;
@@ -106,4 +106,30 @@ std::string &normalize_path(std::string &s)
 		s.append(*it);
 	}
 	return (s);
+};
+
+FtUtils::GeneralException::GeneralException(const std::string &msg) : m_msg(msg)
+{};
+
+FtUtils::GeneralException::~GeneralException() throw()
+{};
+
+const char *FtUtils::GeneralException::what() const throw()
+{
+	std::cerr << "Server config error: ";
+	return (m_msg.data());
+}
+
+
+void FtUtils::skipTokens(std::list<std::string>::iterator &it,
+						 std::list<std::string>::iterator &end, int num)
+{
+	for (int i = 0; i < num; ++i)
+	{
+		if (it == end)
+			throw FtUtils::GeneralException("Token syntax error");
+		++it;
+	}
+	if (it == end)
+		throw FtUtils::GeneralException("Token syntax error");
 }

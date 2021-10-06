@@ -195,11 +195,14 @@ HttpRequest::HttpRequest(const HttpRequest &rhs) :
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &rhs)
 {
+	if (this == &rhs)
+		return (*this);
 	_method = rhs.getMethod();
 	_request_uri = rhs.getRequestUri();
 	_http_v = rhs.getHttpV();
 	_chunked = rhs.isChunked();
 	_header_fields = rhs.getHeaderFields();
 	_body = rhs.getBody();
+	return (*this);
 }
 

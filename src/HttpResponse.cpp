@@ -134,8 +134,8 @@ HttpResponse::HttpResponse(short n, const VirtualServer &server)
 	setError(n, server);
 }
 
-HttpResponse::HttpResponse(HttpRequest &request, std::string &request_uri, VirtualServer &server,
-						   VirtualServer::Location &loc)
+HttpResponse::HttpResponse(const HttpRequest &request, std::string &request_uri, VirtualServer &server,
+						   Location &loc)
 {
 	short err;
 
@@ -222,9 +222,10 @@ int HttpResponse::sendResponse(int fd)
 	headers_vec.push_back('\r');
 	headers_vec.push_back('\n');
 
-	send(fd, headers_vec.data(), headers_vec.size(), NULL);
+	send(fd, headers_vec.data(), headers_vec.size(), 0);
 	if (_body_size > 0)
-		send(fd, _body.data(), _body.size(), NULL);
+		send(fd, _body.data(), _body.size(), 0);
+	return (EXIT_SUCCESS);
 }
 
 HttpResponse::HttpResponse(const HttpResponse &rhs) :
@@ -235,7 +236,7 @@ HttpResponse::HttpResponse(const HttpResponse &rhs) :
 		_header(rhs._header),
 		_body(rhs._body),
 		_body_size(rhs._body_size)
-{}
+{};
 
 HttpResponse &HttpResponse::operator=(const HttpResponse &rhs)
 {

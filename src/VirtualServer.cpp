@@ -14,191 +14,6 @@ bool isNumber(const std::string &str)
 }
 
 
-bool VirtualServer::Location::isAutoindexOn() const
-{
-	return _autoindex_on;
-}
-
-VirtualServer::method_type VirtualServer::hash_method(std::string const &inString)
-{
-	if (inString == "GET") return GET;
-	if (inString == "POST") return POST;
-	if (inString == "DELETE") return DELETE;
-	return (OTHER);
-}
-
-//	bool VirtualServer::Location::isAutoindexOn() const
-//	{
-//		return _autoindex_on;
-//	}
-
-bool VirtualServer::Location::isFileUploadOn() const
-{
-	return !_file_upload.empty();
-}
-
-const std::string &VirtualServer::Location::getIndex() const
-{
-	return _index;
-}
-
-const std::string &VirtualServer::Location::getRoot() const
-{
-	return _root;
-}
-
-const std::string &VirtualServer::Location::getCgiPass() const
-{
-	return _cgi_pass;
-}
-
-const std::vector<bool> &VirtualServer::Location::getMethods() const
-{
-	return _methods;
-}
-
-const std::string &VirtualServer::Location::getRet() const
-{
-	return _ret;
-}
-
-VirtualServer::Location::Location() : _autoindex_on(true),
-									  _file_upload(""),
-									  _index("index.html"), _root("/"), _cgi_pass(""), _ret("")
-{
-	_methods.insert(_methods.begin(), 3, true);
-}
-
-VirtualServer::Location::Location(const Location &rhs) : _autoindex_on(rhs._autoindex_on),
-														 _file_upload(rhs._file_upload),
-														 _index(rhs._index), _root(rhs._root), _cgi_pass(""),
-														 _ret(rhs._ret)
-{
-	_methods = rhs._methods;
-}
-
-VirtualServer::Location &VirtualServer::Location::operator=(const Location &rhs)
-{
-	if (this != &rhs)
-	{
-		_autoindex_on = rhs._autoindex_on;
-		_file_upload = rhs._file_upload;
-		_index = rhs._index;
-		_root = rhs._root;
-		_ret = rhs._ret;
-		_cgi_pass = rhs._cgi_pass;
-		_methods = rhs._methods;
-	}
-	return *this;
-}
-
-VirtualServer::Location::~Location()
-{
-}
-
-bool VirtualServer::Location::methodAllowed(const std::string &method)
-{
-	switch (VirtualServer::hash_method(method))
-	{
-		case GET:
-			return (_methods[0]);
-		case POST:
-			return (_methods[1]);
-		case DELETE:
-			return (_methods[2]);
-		default:
-			return (false);
-	}
-}
-
-void VirtualServer::Location::setLocation(std::list<std::string>::iterator &it,
-										  std::list<std::string>::iterator &end, std::string path)
-{
-
-	skip_tok(it, end, 2);
-
-	if (path[0] == '*' && *it == "cgi_pass")
-	{
-		_cgi_pass = *it;
-		skip_tok(it, end, 2);
-		//                location.insert(std::make_pair(path, loc));
-		skip_tok(it, end, 1);
-		return;
-	}
-	std::list<std::string>::iterator check;
-	while (it != end && *it != "}")
-	{
-		check = it;
-		if (*it == "root" && (++it) != end)
-		{
-			_root = *it;
-			skip_tok(it, end, 2);
-		}
-		if (*it == "methods")
-		{
-			skip_tok(it, end, 1);
-
-			_methods[0] = false;
-			_methods[1] = false;
-			_methods[2] = false;
-			while (*it != ";")
-			{
-				switch (VirtualServer::hash_method(*it))
-				{
-					case GET:
-						_methods[0] = true;
-						break;
-					case POST:
-						_methods[1] = true;
-						break;
-					case DELETE:
-						_methods[2] = true;
-						break;
-					default:
-						throw VirtualServerException("Method not supported " + *it);
-				}
-				skip_tok(it, end, 1);
-			}
-			skip_tok(it, end, 1);
-		}
-		if (*it == "autoindex")
-		{
-			skip_tok(it, end, 1);
-			if (*it == "on" || *it == "off")
-				_autoindex_on = *it == "on";
-			else
-				throw VirtualServerException("Autoindex error: ;");
-			skip_tok(it, end, 2);
-		}
-		if (*it == "return")
-		{
-			skip_tok(it, end, 1);
-			_ret = *it;
-			skip_tok(it, end, 2);
-		}
-		if (*it == "index")
-		{
-			skip_tok(it, end, 1);
-			_index = *it;
-			skip_tok(it, end, 2);
-		}
-		if (*it == "file_upload")
-		{
-			skip_tok(it, end, 1);
-			_file_upload = *it;
-			skip_tok(it, end, 2);
-		}
-		if (it != end && *it == "}")
-			break;
-		if (it == check)
-			throw VirtualServerException("Error location parsing");
-	}
-	if (it == end || *it != "}")
-		throw VirtualServerException("Syntax error: }");
-	skip_tok(it, end, 1);
-}
-
-
 uint16_t VirtualServer::getPort() const
 {
 	return _port;
@@ -229,7 +44,7 @@ bool VirtualServer::validateErrorPages() const
 	{
 		if ((*it).first < 100 || (*it).first > 599)
 			return (false);
-		if (!fileExistsAndReadable((*it).second))
+		if (!FtUtils::fileExistsAndReadable((*it).second))
 			return (false);
 	}
 	return (true);
@@ -243,7 +58,7 @@ bool VirtualServer::validateLocations() const
 		if (it->first[0] == '*')
 		{
 			ret = it->second.getRet();
-			if (ret.empty() || !fileExistsAndExecutable(ret.c_str()))
+			if (ret.empty() || !FtUtils::fileExistsAndExecutable(ret.c_str()))
 				return (false);
 			continue;
 		}
@@ -285,7 +100,7 @@ const std::map<short, std::string> &VirtualServer::getErrorPages() const
 	return _error_pages;
 }
 
-const std::map<std::string, VirtualServer::Location> &VirtualServer::getLocations() const
+const std::map<std::string, Location> &VirtualServer::getLocations() const
 {
 	return _locations;
 }
@@ -304,25 +119,12 @@ VirtualServer::VirtualServer()
 {
 }
 
-void VirtualServer::skip_tok(std::list<std::string>::iterator &it,
-							 std::list<std::string>::iterator &end, int num)
-{
-	for (int i = 0; i < num; ++i)
-	{
-		if (it == end)
-			throw VirtualServerException("Token syntax error");
-		++it;
-	}
-	if (it == end)
-		throw VirtualServerException("Token syntax error");
-}
-
 void VirtualServer::setHost(std::list<std::string>::iterator &it,
 							std::list<std::string>::iterator &end)
 {
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	_host = inet_addr((*it).data());
-	skip_tok(it, end, 2);
+	FtUtils::skipTokens(it, end, 2);
 }
 
 void VirtualServer::setPort(std::list<std::string>::iterator &it,
@@ -330,10 +132,10 @@ void VirtualServer::setPort(std::list<std::string>::iterator &it,
 {
 	unsigned int port = 0;
 
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	port = std::stoi((*it));
 	_port = (uint16_t) port;
-	skip_tok(it, end, 2);
+	FtUtils::skipTokens(it, end, 2);
 }
 
 void VirtualServer::setBodySize(std::list<std::string>::iterator &it,
@@ -341,10 +143,10 @@ void VirtualServer::setBodySize(std::list<std::string>::iterator &it,
 {
 	unsigned long body_size = 0;
 
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	body_size = std::stoi(*it);
 	_body_size_limit = body_size;
-	skip_tok(it, end, 2);
+	FtUtils::skipTokens(it, end, 2);
 }
 
 void VirtualServer::setErrorPage(std::list<std::string>::iterator &it,
@@ -353,11 +155,11 @@ void VirtualServer::setErrorPage(std::list<std::string>::iterator &it,
 	short err;
 	std::string path;
 
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	err = (short) std::stoi(*it);
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	_error_pages.insert(std::make_pair(err, *it));
-	skip_tok(it, end, 2);
+	FtUtils::skipTokens(it, end, 2);
 }
 
 void VirtualServer::setLocation(std::list<std::string>::iterator &it,
@@ -366,23 +168,23 @@ void VirtualServer::setLocation(std::list<std::string>::iterator &it,
 	Location loc;
 	std::string path;
 
-	skip_tok(it, end, 1);
+	FtUtils::skipTokens(it, end, 1);
 	path = *it;
 	loc.setLocation(it, end, path);
 	location.insert(std::make_pair(path, loc));
 }
 
 
-std::map<std::string, VirtualServer::Location>::iterator VirtualServer::findRouteFromUri(std::string &normalized_uri)
+std::map<std::string, Location>::iterator VirtualServer::findRouteFromUri(std::string &normalized_uri)
 {
 	if (normalized_uri.empty())
 		return (_locations.end());
 
-	int i = 0;
+	unsigned long i = 0;
 	int best = 0;
 	int cur_best = 0;
-	std::map<std::string, VirtualServer::Location>::iterator it = _locations.begin();
-	std::map<std::string, VirtualServer::Location>::iterator search_res;
+	std::map<std::string, Location>::iterator it = _locations.begin();
+	std::map<std::string, Location>::iterator search_res;
 
 	for (; it != _locations.end(); ++it)
 	{
@@ -419,7 +221,7 @@ std::map<std::string, VirtualServer::Location>::iterator VirtualServer::findRout
 
 //1. get request path (remove query, normalize path, find location, append root, create response)
 //2.
-HttpResponse VirtualServer::generate(const HttpRequest &request, std::string host)
+HttpResponse VirtualServer::generate(const HttpRequest &request)
 {
 	std::string req_no_query;
 	std::map<std::string, Location>::iterator it;
@@ -427,8 +229,8 @@ HttpResponse VirtualServer::generate(const HttpRequest &request, std::string hos
 	req_no_query = request.getRequestUri().substr(0, req_no_query.find('?'));
 	if (req_no_query.empty())
 		return (HttpResponse(400, *this));
-	req_no_query = normalize_path(req_no_query);
-	std::map<std::string, VirtualServer::Location>::iterator loc_route;
+	req_no_query = FtUtils::normalizePath(req_no_query);
+	std::map<std::string, Location>::iterator loc_route;
 	loc_route = findRouteFromUri(req_no_query);
 	if (loc_route == _locations.end())
 		return (HttpResponse(400, *this));
@@ -448,13 +250,13 @@ HttpResponse VirtualServer::generate(const HttpRequest &request, std::string hos
 		if (!index.empty())
 			req_no_query = req_no_query + index;
 		else if (loc_route->second.isAutoindexOn() && request.getMethod() == "GET")
-			//create directory listing page
-			return (HttpResponse(req_no_query));
+			//@todo create directory listing page
+			return (HttpResponse(500, *this));
 		//index enabled
 		return (HttpResponse(400, *this));
 	} else
 	{
-		return (HttpResponse(req_noq_query, *this, loc_route->second));
+		return (HttpResponse(request, req_no_query, *this, loc_route->second));
 	}
 	//		response._proto = "HTTP/1.1";
 	//		std::ifstream file(req_no_query, std::ios::binary | std::ios::ate);
@@ -482,6 +284,7 @@ VirtualServer &VirtualServer::operator=(const VirtualServer &rhs)
 	_locations = rhs._locations;
 	_body_size_limit = rhs._body_size_limit;
 	_directory_listing_on = rhs._directory_listing_on;
+	return (*this);
 }
 
 VirtualServer::VirtualServer(const VirtualServer &rhs) :

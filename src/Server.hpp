@@ -5,6 +5,7 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "VirtualServer.hpp"
 #include "Socket.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -13,13 +14,13 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include "utils.hpp"
+#include "Utils.hpp"
 #include <list>
-#include "VirtualServer.hpp"
 
 #define MAX_AWAIT_CONN 100
 #define MAX_KQUEUE_EV 100
 
+class Socket;
 //@todo Coplien form should be implemented
 class Server
 {

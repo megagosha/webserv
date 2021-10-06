@@ -100,7 +100,7 @@ std::pair<int, struct kevent *> KqueueEvents::getUpdates(void)
 	return (std::make_pair(res, _res_event));
 }
 
-const char *KqueueEvents::KqueueException::what() throw()
+const char *KqueueEvents::KqueueException::what() const _NOEXCEPT
 {
 	return (std::strerror(errno));
 }
