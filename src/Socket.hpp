@@ -11,6 +11,9 @@
 #include <string>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 class VirtualServer;
 class HttpResponse;
@@ -19,7 +22,7 @@ class Socket
 {
 private:
 	int _socket_fd;
-	in_addr_t _ip;
+    in_addr_t _ip;
 	uint16_t _port;
 	VirtualServer &_default_config;
 	std::map<std::string, VirtualServer> _virtual_servers; //@todo change container
@@ -38,7 +41,7 @@ public:
 
 	void setSocketFd(int socketFd);
 
-	in_addr_t getIp() const;
+    in_addr_t getIp() const;
 
 	void setIp(in_addr_t ip);
 
@@ -50,9 +53,9 @@ public:
 
 	void appendVirtualServer(const VirtualServer &virtual_server);
 
-	Socket(uint32_t ip, uint16_t port, int fd, VirtualServer &sock);
+	Socket(in_addr_t ip, uint16_t port, int fd, VirtualServer &sock);
 
-	Socket(uint32_t ip, uint16_t port, VirtualServer &serv);
+	Socket(in_addr_t ip, uint16_t port, VirtualServer &serv);
 
 	void clear();
 

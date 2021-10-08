@@ -78,7 +78,6 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 	std::list<std::string>::iterator it = _tok_list.begin();
 	for (; it != end; ++it) // loop for servers
 	{
-
 		if (*it != "server" || *(++it) != "{")
 			throw Server::ServerException("Error while parsing config file");
 		VirtualServer serv;
@@ -116,6 +115,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 		}
 		validate(serv);
 		apply(serv);
+        FtUtils::skipTokens( it, end, 1);
 	}
 	run();
 }
@@ -129,8 +129,10 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 	struct sockaddr s_addr = {};
 	socklen_t s_len;
 
+    std::cout << "Kqueue update size " << updates.first << std::endl;
 	while (i < updates.first)
 	{
+        std::cout << "Socket " << updates.second[i].ident << " is available to read" << std::endl;
 		if (updates.second[i].filter == EVFILT_READ)
 		{
 			it = _sockets.find(updates.second[i].ident);
@@ -220,9 +222,10 @@ _Noreturn void Server::run(void)
 {
 	std::pair<int, struct kevent *> updates;
 
-	_kq.init();
+//	_kq.init();
 	for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
 	{
+        std::cout << "Added " << it->first << " to Kqueue" << std::endl;
 		_kq.addFd(it->first);
 	}
 	while (1) //@todo implement  gracefull exit and catching errors
@@ -242,7 +245,12 @@ bool Server::validate(const VirtualServer &server)
 	if (server.validatePort() && server.validateHost() &&
 		server.validateErrorPages() && server.validateLocations())
 		return (true);
-	throw ServerException("Config validation failed");
+    std::cout << server.validateErrorPages() << std::endl;
+    std::cout << server.validatePort() << std::endl;
+    std::cout << server.validateHost() << std::endl;
+    std::cout << server.validateLocations() << std::endl;
+
+    throw ServerException("Config validation failed");
 }
 
 void Server::apply(VirtualServer &serv)

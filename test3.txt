@@ -3,60 +3,81 @@
 #listen to specify host and port
 #if port not specified listen on 80
 #if listen not specifed -> error
-#root directories should be set up with out trailing "/"
+#root directories should be set up with trailing "/"
 #location paths should end with "/" if designed for folders
 #error_page: error_code relative_path (relative to root)
 server {
     listen 127.0.0.1;
     port 80;
-    error_page 404 /relative_path_to_file;
+    error_page 404 /Users/edebi/Desktop/webserv/www/error/404.html;
+    error_page 404 /Users/edebi/Desktop/webserv/www/error/405.html;
     client_max_body_size 1024;
-
  location / {
-    root /tmp/www/;
+    root /Users/edebi/Desktop/webserv/www/final/;
     methods POST GET DELETE;
     autoindex on; #turned on by default;
     index index.html; #specify default file
-    file_upload /path/to/dir;
+    file_upload /Users/edebi/Desktop/webserv/Upload;
  }
- location /folder/one/two/
+ location /Users/edebi/Desktop/webserv/www/final/images/hero.jpg
  {
-    root /index/tmp/;
+    return /Users/edebi/Desktop/webserv/www/final/images/profile.jpg;
  }
  location *.php {
- cgi_pass /path/to/cgiiii; #specify full path
+ cgi_pass /usr/bin/php; #IS NOT VALID CGI specify full path
  }
 }
 
 server {
     listen 127.0.0.1;
-    port 80;
-    server_name google.ru
-    }
-
-    server {
-        listen 127.0.0.1;
-        port 80;
-        server_name yandex.ru
-        }
-
-server {
-    listen 127.0.0.1;
-    error_page 404 /relative_path_to_file;
+    port 60;
+    error_page 404 /Users/edebi/Desktop/webserv/www/error/404.html;
+    error_page 404 /Users/edebi/Desktop/webserv/www/error/405.html;
     client_max_body_size 1024;
-
  location / {
-    root /tmp/www/;
+    root /Users/edebi/Desktop/webserv/www/final/;
     methods POST GET DELETE;
-    autoindex on; #turned on by default
+    autoindex on; #turned on by default;
     index index.html; #specify default file
-    file_upload /path/to/dir;
+    file_upload /Users/edebi/Desktop/webserv/Upload;
  }
- location /index.php
+ location /Users/edebi/Desktop/webserv/www/final/images/hero.jpg
  {
-    return /index.html;
+    return /Users/edebi/Desktop/webserv/www/final/images/profile.jpg;
  }
  location *.php {
- cgi_pass /path/to/cgijjk; #specify full path
+ cgi_pass /usr/bin/php; #IS NOT VALID CGI specify full path
  }
 }
+# server {
+#    listen 127.0.0.1;
+#    port 443;
+#    server_name google.ru
+#    }
+#
+#    server {
+#        listen 127.0.0.1;
+#        port 443;
+#        server_name yandex.ru
+#        }
+#
+# server {
+#    listen 127.0.0.1;
+#    #error_page 404 /relative_path_to_file;
+#    client_max_body_size 1024;
+#
+# location / {
+#   root /tmp/www/;
+#    methods POST GET DELETE;
+#    autoindex on; #turned on by default
+#    index index.html; #specify default file
+#    file_upload /path/to/dir;
+# }
+# location /index.php
+# {
+#    return /index.html;
+# }
+# location *.php {
+# cgi_pass /path/to/cgijjk; #specify full path
+# }
+#}

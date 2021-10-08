@@ -62,7 +62,7 @@ const char *Socket::SocketException::what() const throw()
 	return (m_msg);
 }
 
-Socket::Socket(uint32_t ip,
+Socket::Socket(in_addr_t ip,
 			   uint16_t port,
 			   int fd,
 			   VirtualServer &serv) :
@@ -74,7 +74,7 @@ Socket::Socket(uint32_t ip,
 	appendVirtualServer(serv);
 };
 
-Socket::Socket(uint32_t ip, uint16_t port, VirtualServer &serv
+Socket::Socket(in_addr_t ip, uint16_t port, VirtualServer &serv
 ) :
 
 		_ip(ip), _port(port), _default_config(serv)
@@ -103,6 +103,9 @@ Socket::Socket(uint32_t ip, uint16_t port, VirtualServer &serv
 		throw SocketException(std::strerror(errno));
 	}
 	_socket_fd = fd;
+   in_addr b;
+   b.s_addr = ip;
+    std::cout << "Created new socket on " << fd << " for ip " <<  inet_ntoa(b) << " port " << port << std::endl;
 }
 
 void Socket::clear()

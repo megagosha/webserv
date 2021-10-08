@@ -3,7 +3,7 @@
 //
 
 #include "KqueueEvents.hpp"
-
+#include <iostream>
 
 KqueueEvents::KqueueEvents() : _max_size(0)
 {};
@@ -69,6 +69,7 @@ KqueueEvents::~KqueueEvents()
 void KqueueEvents::addFd(int fd, bool write)
 {
 	_fds.insert(fd);
+
 	EV_SET(_w_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
 	if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
 		throw KqueueException();
@@ -96,6 +97,7 @@ std::pair<int, struct kevent *> KqueueEvents::getUpdates(void)
 {
 	struct timespec tmout = {5,     /* block for 5 seconds at most */
 							 0};
+    std::cout << "kq max size " << _max_size << std::endl;
 	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);
 	return (std::make_pair(res, _res_event));
 }

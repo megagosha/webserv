@@ -61,7 +61,7 @@ Location::Location() : _autoindex_on(true),
 
 Location::Location(const Location &rhs) : _autoindex_on(rhs._autoindex_on),
 										  _file_upload(rhs._file_upload),
-										  _index(rhs._index), _root(rhs._root), _cgi_pass(""),
+										  _index(rhs._index), _root(rhs._root), _cgi_pass(rhs._cgi_pass),
 										  _ret(rhs._ret)
 {
 	_methods = rhs._methods;
@@ -109,10 +109,10 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 
 	if (path[0] == '*' && *it == "cgi_pass")
 	{
-		_cgi_pass = *it;
-		FtUtils::skipTokens(it, end, 2);
-		//                location.insert(std::make_pair(path, loc));
 		FtUtils::skipTokens(it, end, 1);
+        _cgi_pass = *it;
+        //                location.insert(std::make_pair(path, loc));
+		FtUtils::skipTokens(it, end, 2);
 		return;
 	}
 	std::list<std::string>::iterator check;

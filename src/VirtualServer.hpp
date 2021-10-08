@@ -75,7 +75,7 @@ public:
 
 	bool isDirectoryListingOn() const;
 
-	std::map<std::string, Location> location;
+//	std::map<std::string, Location> location;
 
 	void setHost(std::list<std::string>::iterator &it,
 				 std::list<std::string>::iterator &end);

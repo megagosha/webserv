@@ -53,11 +53,11 @@ bool VirtualServer::validateErrorPages() const
 bool VirtualServer::validateLocations() const
 {
 	std::string ret;
-	for (std::map<std::string, Location>::const_iterator it = _locations.begin(); it != location.end(); ++it)
+	for (std::map<std::string, Location>::const_iterator it = _locations.begin(); it != _locations.end(); ++it)
 	{
 		if (it->first[0] == '*')
 		{
-			ret = it->second.getRet();
+			ret = it->second.getCgiPass();
 			if (ret.empty() || !FtUtils::fileExistsAndExecutable(ret.c_str()))
 				return (false);
 			continue;
@@ -171,7 +171,7 @@ void VirtualServer::setLocation(std::list<std::string>::iterator &it,
 	FtUtils::skipTokens(it, end, 1);
 	path = *it;
 	loc.setLocation(it, end, path);
-	location.insert(std::make_pair(path, loc));
+	_locations.insert(std::make_pair(path, loc));
 }
 
 
