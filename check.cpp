@@ -2,5 +2,10 @@
 
 int main (void)
 {
-	Server x("/Users/megagosha/42/webserv/test3.txt");
+	Server x("/Users/edebi/Desktop/webserv/test3.txt");
 }
+
+//int main(void)
+//{
+//
+//}

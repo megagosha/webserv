@@ -33,7 +33,9 @@ Server::~Server()
 
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 {
-	std::ifstream is(config_file, std::ifstream::binary);
+    signal(SIGPIPE, SIG_IGN);
+
+    std::ifstream is(config_file, std::ifstream::binary);
 	std::string line;
 	if ((is.rdstate() & std::ifstream::failbit) != 0)
 		throw Server::ServerException("Error opening " + config_file + "\n");
@@ -133,7 +135,8 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 	while (i < updates.first)
 	{
         std::cout << "Socket " << updates.second[i].ident << " is available to read" << std::endl;
-		if (updates.second[i].filter == EVFILT_READ)
+		std::cout << (updates.second[i].flags & EV_EOF) << std::endl;
+        if (updates.second[i].filter == EVFILT_READ)
 		{
 			it = _sockets.find(updates.second[i].ident);
 			//accept new connection
@@ -218,7 +221,7 @@ void Server::process_response(std::pair<int, struct kevent *> &updates)
 	}
 }
 
-_Noreturn void Server::run(void)
+ void Server::run(void)
 {
 	std::pair<int, struct kevent *> updates;
 
@@ -230,6 +233,7 @@ _Noreturn void Server::run(void)
 	}
 	while (1) //@todo implement  gracefull exit and catching errors
 	{
+
 //		if (exit_flag)
 //		{
 //			return (EXIT_SUCCESS);
@@ -264,7 +268,6 @@ void Server::apply(VirtualServer &serv)
 		}
 	}
 	Socket sock(serv.getHost(), serv.getPort(), serv);
-//	sock.appendVirtualServer(serv);
 	_sockets.insert(std::make_pair(sock.getSocketFd(), sock));
 }
 

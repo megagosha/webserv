@@ -92,11 +92,12 @@ public:
 	void setLocation(std::list<std::string>::iterator &it,
 					 std::list<std::string>::iterator &end);
 
-	std::map<std::string, Location>::iterator findRouteFromUri(std::string &normalized_uri);
+	std::map<std::string, Location>::iterator findRouteFromUri(std::string normalized_uri);
 
 	//1. get request path (remove query, normalize path, find location, append root, create response)
 	//2.
 	HttpResponse generate(const HttpRequest &request);
+    friend bool operator== (VirtualServer &lhs, VirtualServer &rhs);
 
 	class VirtualServerException : public std::exception
 	{
