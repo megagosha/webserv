@@ -1,0 +1,24 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: clang++ сборка активного файла",
+            "command": "make",
+            "args": [
+                "-C",
+                ".."            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Задача создана отладчиком."
+        }
+    ],
+    "version": "2.0.0"
+}
