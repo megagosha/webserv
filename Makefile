@@ -27,7 +27,7 @@ all:		$(NAME)
 
 -include $(DEPS)
 $(OBJS_DIR)/%.o: $(SRCS_DIR)/%.cpp | $(OBJS_DIR)
-	$(CC) $(CFLAGS) -I$(INCLUDES_DIR) -MMD -MP -c -o $@ $<
+	$(CC) -g $(CFLAGS) -I$(INCLUDES_DIR) -MMD -MP -c -o $@ $<
 
 $(OBJS_DIR):
 	mkdir -p $(OBJS_DIR)
