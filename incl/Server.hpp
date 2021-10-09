@@ -57,7 +57,7 @@ public:
 
 	void process_response(std::pair<int, struct kevent *> &updates);
 
-	_Noreturn void run(void);
+	void run(void);
 
 	bool validate(const VirtualServer &server);
 

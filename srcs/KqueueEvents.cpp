@@ -71,12 +71,12 @@ void KqueueEvents::addFd(int fd, bool write)
 	_fds.insert(fd);
 
 	EV_SET(_w_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-	if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
+	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
 		throw KqueueException();
 	if (write)
 	{
 		EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-		if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
+		if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
 			throw KqueueException();
 	}
 }
@@ -85,11 +85,11 @@ void KqueueEvents::deleteFd(int fd, bool write)
 {
 	_fds.erase(fd);
 	EV_SET(_w_event, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-	kevent(_queue_fd, _w_event, 1, NULL, 0, NULL);
+	kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
 	if (write)
 	{
 		EV_SET(_w_event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-		kevent(_queue_fd, _w_event, 1, NULL, 0, NULL);
+		kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
 	}
 }
 

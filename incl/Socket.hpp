@@ -24,7 +24,7 @@ private:
 	int _socket_fd;
     in_addr_t _ip;
 	uint16_t _port;
-	VirtualServer &_default_config;
+	VirtualServer *_default_config;
 	std::map<std::string, VirtualServer> _virtual_servers; //@todo change container
 	Socket();
 public:
@@ -35,7 +35,7 @@ public:
 
 	~Socket();
 
-	VirtualServer &getDefaultConfig(void) const;
+	VirtualServer *getDefaultConfig(void) const;
 
 	int getSocketFd() const;
 
@@ -55,7 +55,7 @@ public:
 
 	Socket(in_addr_t ip, uint16_t port, int fd, VirtualServer &sock);
 
-	Socket(in_addr_t ip, uint16_t port, VirtualServer &serv);
+	Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv);
 
 	void clear();
 

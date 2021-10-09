@@ -92,7 +92,7 @@ std::string HttpResponse::getErrorHtml(std::string &error, std::string &reason)
 	std::string res;
 
 	res += "<!DOCTYPE html>\n<html><title>" + error +
-		   "/title><_body><h1>" + reason + "</h1></_body></html>\n";
+		   "</title><body><h1>" + error + " " + reason + "</h1></body></html>\n";
 	return (res);
 }
 

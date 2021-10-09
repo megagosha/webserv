@@ -67,7 +67,7 @@ std::string &FtUtils::normalizePath(std::string &s)
 	std::list<std::string>::reverse_iterator it = tokens.rbegin();
 	int i = 0;
 
-	if (s[0] != '/')
+    if (s[0] != '/')
 	{
 		s.clear();
 		return (s);
@@ -92,20 +92,22 @@ std::string &FtUtils::normalizePath(std::string &s)
 		s.clear();
 		return (s);
 	}
-	for (std::list<std::string>::iterator it = tokens.begin(); it != tokens.end(); ++it)
+    s.clear();
+    for (std::list<std::string>::iterator rit = tokens.begin(); rit != tokens.end(); ++rit)
 	{
-		if (*it == "/")
+		if (*rit == "/")
 		{
-			if (*(++it) == "/")
+			if (*(++rit) == "/")
 			{
 				s.clear();
 				return (s);
 			} else
-				--it;
+				--rit;
 		}
-		s.append(*it);
+		    s.append(*rit);
 	}
-	return (s);
+    std::cout << "check " << s << std::endl;
+    return (s);
 };
 
 FtUtils::GeneralException::GeneralException(const std::string &msg) : m_msg(msg)
