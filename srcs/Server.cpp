@@ -218,7 +218,7 @@ void Server::process_response(std::pair<int, struct kevent *> &updates)
 	}
 }
 
-_Noreturn void Server::run(void)
+void Server::run(void)
 {
 	std::pair<int, struct kevent *> updates;
 
