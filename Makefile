@@ -6,7 +6,8 @@ SRC_FILES	= check.cpp \
 				Server.cpp \
 				Socket.cpp \
 				Utils.cpp \
-				VirtualServer.cpp
+				VirtualServer.cpp \
+				MimeType.cpp
 
 NAME	= webserv
 

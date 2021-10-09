@@ -13,7 +13,7 @@ server {
     error_page 404 www/error/405.html;
     client_max_body_size 1024;
  location / {
-    root /www/final/;
+    root www/final/;
     methods POST GET DELETE;
     autoindex on; #turned on by default;
     index index.html; #specify default file

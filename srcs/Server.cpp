@@ -13,7 +13,7 @@ Server::ServerException::~ServerException() throw()
 const char *Server::ServerException::what() const throw()
 {
 	std::cerr << "ServerError: ";
-	return (m_msg.data());
+	return (std::exception::what());
 }
 
 
@@ -35,47 +35,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 {
     signal(SIGPIPE, SIG_IGN);
 
-    std::ifstream is(config_file, std::ifstream::binary);
-	std::string line;
-	if ((is.rdstate() & std::ifstream::failbit) != 0)
-		throw Server::ServerException("Error opening " + config_file + "\n");
-	init_keys();
-	if (is)
-	{
-		std::string tok;
-		tok.reserve(50);
-		while (std::getline(is, line))
-		{
-			tok.clear();
-			for (std::string::iterator it = line.begin(); it != line.end(); ++it)
-			{
-				if (std::isspace(*it) || *it == '#' || *it == ';')
-				{
-					if (!tok.empty())
-					{
-						_tok_list.push_back(std::string(tok));
-						tok.clear();
-					}
-					if (*it == '#')
-						break;
-					if (*it == ';')
-					{
-						_tok_list.push_back(std::string(1, *it));
-					}
-					continue;
-				}
-				tok.push_back(*it);
-			}
-			if (!tok.empty())
-				_tok_list.push_back(std::string(tok));
-		}
-	} else
-	{
-		is.close();
-		throw Server::ServerException("Error EOF was not reached " + config_file + "\n");
-	}
-	is.close();
-
+    FtUtils::tokenizeFileStream(config_file, _tok_list);
 	std::list<std::string>::iterator end = _tok_list.end();
 	std::list<std::string>::iterator it = _tok_list.begin();
 	for (; it != end; ++it) // loop for servers
@@ -115,6 +75,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 				++it;
 			//@todo THROW ERROR if nothing else worked
 		}
+		MimeType("mime.conf");
 		validate(serv);
 		apply(serv);
         FtUtils::skipTokens( it, end, 1);
@@ -271,26 +232,6 @@ void Server::apply(VirtualServer &serv)
 	_sockets.insert(std::make_pair(sock.getSocketFd(), sock));
 }
 
-void Server::init_keys()
-{
-	_config_keys.insert("server");
-	_config_keys.insert("listen");
-	_config_keys.insert("port");
-	_config_keys.insert("error_page");
-	_config_keys.insert("client_max_body_size");
-	_config_keys.insert("location");
-	_config_keys.insert("root");
-	_config_keys.insert("methods");
-	_config_keys.insert("autoindex");
-	_config_keys.insert("index");
-	_config_keys.insert("file_upload");
-	_config_keys.insert("cgi_pass");
-	_config_keys.insert("methods");
-	_config_keys.insert("cgi_pass");
-	_config_keys.insert("return");
-	_config_keys.insert("{");
-	_config_keys.insert("}");
-}
 
 Server &Server::operator=(const Server &rhs)
 {
@@ -299,7 +240,6 @@ Server &Server::operator=(const Server &rhs)
 	_sockets = rhs._sockets;
 	_connections = rhs._connections;
 	_tok_list = rhs._tok_list;
-	_config_keys = rhs._config_keys;
 	_pending_response= rhs._pending_response;
 	_kq = rhs._kq;
 	return (*this);
@@ -309,7 +249,6 @@ Server::Server(const Server &rhs) :
 		_sockets(rhs._sockets),
 		_connections(rhs._connections),
 		_tok_list(rhs._tok_list),
-		_config_keys(rhs._config_keys),
 		_pending_response(rhs._pending_response),
 		_kq(rhs._kq)
 {}

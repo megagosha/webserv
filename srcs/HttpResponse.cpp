@@ -12,7 +12,6 @@ void HttpResponse::setResponseString(std::string pr, std::string s_c, std::strin
 	_response_string = _proto + " " + _status_code + " " + _status_reason + "\r\n";
 }
 
-
 short HttpResponse::writeFileToBuffer(std::string &file_path)
 {
 	long long int length;
@@ -36,6 +35,7 @@ short HttpResponse::writeFileToBuffer(std::string &file_path)
 			return (500);
 		}
 		file.close();
+		insertHeader("Content-Type", MimeType::getType(file_path));
 		insertHeader("Content-Type", "text/html; charset=UTF-8"); //@todo determine content type
 		return (200);
 	} else

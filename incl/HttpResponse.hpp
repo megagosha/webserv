@@ -7,6 +7,7 @@
 
 #include "VirtualServer.hpp"
 #include "HttpRequest.hpp"
+#include "MimeType.hpp"
 #include <map>
 #include <iostream>
 #include <fstream>

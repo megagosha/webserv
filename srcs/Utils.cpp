@@ -1,6 +1,7 @@
 //
 // Created by Elayne Debi on 9/16/21.
 //
+#include <fstream>
 #include "Utils.hpp"
 
 bool FtUtils::fileExistsAndReadable(const std::string &name)
@@ -67,7 +68,7 @@ std::string &FtUtils::normalizePath(std::string &s)
 	std::list<std::string>::reverse_iterator it = tokens.rbegin();
 	int i = 0;
 
-    if (s[0] != '/')
+	if (s[0] != '/')
 	{
 		s.clear();
 		return (s);
@@ -92,8 +93,8 @@ std::string &FtUtils::normalizePath(std::string &s)
 		s.clear();
 		return (s);
 	}
-    s.clear();
-    for (std::list<std::string>::iterator rit = tokens.begin(); rit != tokens.end(); ++rit)
+	s.clear();
+	for (std::list<std::string>::iterator rit = tokens.begin(); rit != tokens.end(); ++rit)
 	{
 		if (*rit == "/")
 		{
@@ -104,10 +105,10 @@ std::string &FtUtils::normalizePath(std::string &s)
 			} else
 				--rit;
 		}
-		    s.append(*rit);
+		s.append(*rit);
 	}
-    std::cout << "check " << s << std::endl;
-    return (s);
+	std::cout << "check " << s << std::endl;
+	return (s);
 };
 
 FtUtils::GeneralException::GeneralException(const std::string &msg) : m_msg(msg)
@@ -134,4 +135,45 @@ void FtUtils::skipTokens(std::list<std::string>::iterator &it,
 	}
 	if (it == end)
 		throw FtUtils::GeneralException("Token syntax error");
+}
+
+void FtUtils::tokenizeFileStream(std::string const &file_path, std::list<std::string> &res)
+{
+	std::string tok;
+	std::ifstream is(file_path, std::ifstream::binary);
+	std::string line;
+
+	std::cout << file_path << std::endl;
+	if ((is.rdstate() & std::ifstream::failbit) != 0)
+		throw FtUtils::GeneralException("Error opening " + file_path + "\n");
+	if (is)
+		while (std::getline(is, line))
+		{
+			tok.clear();
+			for (std::string::iterator it = line.begin(); it != line.end(); ++it)
+			{
+				if (std::isspace(*it) || *it == '#' || *it == ';')
+				{
+					if (!tok.empty())
+					{
+						res.push_back(std::string(tok));
+						tok.clear();
+					}
+					if (*it == '#')
+						break;
+					if (*it == ';')
+						res.push_back(std::string(1, *it));
+					continue;
+				}
+				tok.push_back(*it);
+			}
+			if (!tok.empty())
+				res.push_back(std::string(tok));
+		}
+	else
+	{
+		is.close();
+		throw FtUtils::GeneralException("Error EOF was not reached " + file_path + "\n");
+	}
+	is.close();
 }

@@ -30,6 +30,9 @@ public:
 	static void skipTokens(std::list<std::string>::iterator &it,
 						   std::list<std::string>::iterator &end, int num);
 
+	static void tokenizeFileStream(std::string const &file_path,
+											std::list<std::string> &res);
+
 	class GeneralException : public std::exception
 	{
 		const std::string m_msg;

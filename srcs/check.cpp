@@ -2,5 +2,5 @@
 
 int main (void)
 {
-	Server x("test3.txt");
+	Server x("webserv_config_example");
 }

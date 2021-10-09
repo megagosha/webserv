@@ -16,7 +16,7 @@
 #include <iostream>
 #include "Utils.hpp"
 #include <list>
-
+#include "MimeType.hpp"
 #define MAX_AWAIT_CONN 100
 #define MAX_KQUEUE_EV 100
 
@@ -31,7 +31,6 @@ private:
 	std::map<int, iter> _connections; // <connection fd, socket iterator>
 //	std::string config_res;
 	std::list<std::string> _tok_list;
-	std::set<std::string> _config_keys;
 //    std::map<int, VirtualServer> servers;
 	std::map<int, HttpResponse> _pending_response;
 	//pair connection fd with server fd

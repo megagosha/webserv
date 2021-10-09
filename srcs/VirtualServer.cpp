@@ -196,16 +196,13 @@ HttpResponse VirtualServer::generate(const HttpRequest &request) {
     std::map<std::string, Location>::iterator it;
 
     req_no_query = request.getRequestUri().substr(0, req_no_query.find('?'));
-    std::cout << "1: " << req_no_query << std::endl;
 
     if (req_no_query.empty())
         return (HttpResponse(400, *this));
     req_no_query = FtUtils::normalizePath(req_no_query);
-    std::cout << "2: " << req_no_query << std::endl;
 
     std::map<std::string, Location>::iterator loc_route;
     loc_route = findRouteFromUri(req_no_query);
-    std::cout << "3: " << req_no_query << std::endl;
 
     if (loc_route == _locations.end())
         return (HttpResponse(400, *this));
@@ -222,7 +219,10 @@ HttpResponse VirtualServer::generate(const HttpRequest &request) {
     if (*request.getRequestUri().rbegin() == '/') {
         std::string index = loc_route->second.getIndex();
         if (!index.empty())
-            req_no_query = req_no_query + index;
+        {
+        	req_no_query = req_no_query + index;
+        	return (HttpResponse(request, req_no_query, *this, loc_route->second));
+        }
         else if (loc_route->second.isAutoindexOn() && request.getMethod() == "GET")
             //@todo create directory listing page
             return (HttpResponse(500, *this));
