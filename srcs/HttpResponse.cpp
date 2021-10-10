@@ -35,8 +35,7 @@ short HttpResponse::writeFileToBuffer(std::string &file_path)
 			return (500);
 		}
 		file.close();
-		insertHeader("Content-Type", MimeType::getType(file_path));
-		insertHeader("Content-Type", "text/html; charset=UTF-8"); //@todo determine content type
+		insertHeader("Content-Type", MimeType::getType(file_path));//@todo determine content type
 		return (200);
 	} else
 		return (404);
