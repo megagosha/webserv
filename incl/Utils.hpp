@@ -12,7 +12,8 @@
 #include <iostream>
 #include <unistd.h>
 #include <list>
-
+#include <sys/socket.h>
+#include <arpa/inet.h>
 struct FtUtils
 {
 
@@ -43,6 +44,7 @@ public:
 
 		const char *what() const throw();
 	};
+    static std::string ClientIpFromFd(int fd);
 };
 
 #endif

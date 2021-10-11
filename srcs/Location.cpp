@@ -17,6 +17,27 @@ VirtualServer::method_type hashMethod(std::string const &inString)
 	return (VirtualServer::OTHER);
 }
 
+std::string Location::getAllowedMethodsField() const
+{
+    std::string res;
+
+    if (_methods[2])
+        res.insert(0, "DELETE");
+    if (_methods[1])
+    {
+        if (!res.empty())
+            res.insert(0, ", ");
+        res.insert(0, "POST");
+    }
+    if (_methods[0])
+    {
+        if (!res.empty())
+            res.insert(0, ", ");
+        res.insert(0, "GET");
+    }
+    return (res);
+}
+
 //	bool VirtualServer::Location::isAutoindexOn() const
 //	{
 //		return _autoindex_on;

@@ -2,6 +2,7 @@
 // Created by Elayne Debi on 9/16/21.
 //
 #include <fstream>
+#include <netinet/in.h>
 #include "Utils.hpp"
 
 bool FtUtils::fileExistsAndReadable(const std::string &name)
@@ -176,4 +177,17 @@ void FtUtils::tokenizeFileStream(std::string const &file_path, std::list<std::st
 		throw FtUtils::GeneralException("Error EOF was not reached " + file_path + "\n");
 	}
 	is.close();
+}
+
+std::string FtUtils::ClientIpFromFd(int fd) {
+    sockaddr_in addr = {};
+    socklen_t len;
+    char ip[INET6_ADDRSTRLEN];
+
+    bzero(&addr, sizeof(addr));
+    len = sizeof(addr);
+    getsockname(fd,(struct sockaddr *) &addr, &len);
+    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+
+    return std::string(ip);
 }

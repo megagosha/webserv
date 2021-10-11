@@ -46,6 +46,8 @@ public:
 
 	void setLocation(std::list<std::string>::iterator &it,
 					 std::list<std::string>::iterator &end, std::string path);
+
+    std::string     getAllowedMethodsField(void) const;
 };
 
 #endif //WEBSERV_LOCATION_HPP

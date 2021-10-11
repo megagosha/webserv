@@ -194,27 +194,25 @@ std::map<std::string, Location>::iterator VirtualServer::findRouteFromUri(std::s
 HttpResponse VirtualServer::generate(const HttpRequest &request) {
     std::string req_no_query;
     std::map<std::string, Location>::iterator it;
+    std::map<std::string, Location>::iterator loc_route;
 
-    req_no_query = request.getRequestUri().substr(0, req_no_query.find('?'));
+    req_no_query = request.getNormalizedPath();
 
     if (req_no_query.empty())
         return (HttpResponse(400, *this));
-    req_no_query = FtUtils::normalizePath(req_no_query);
 
-    std::map<std::string, Location>::iterator loc_route;
-    loc_route = findRouteFromUri(req_no_query);
+    loc_route = findRouteFromUri(req_no_query); //@todo add search for cgi_location
 
     if (loc_route == _locations.end())
         return (HttpResponse(400, *this));
 
     if (!loc_route->second.methodAllowed(request.getMethod())) {
         //https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.5
-        //@todo construct Allow _header with supported methods;
-        return (HttpResponse(405, *this));
+        //@todo TEST Allow header field with supported methods;
+        return (HttpResponse(405, *this, loc_route->second));
     }
     //@todo validate root field in each location
     req_no_query = req_no_query.replace(0, 1, loc_route->second.getRoot());
-    std::cout << "YOO: " << req_no_query << std::endl;
 
     if (*request.getRequestUri().rbegin() == '/') {
         std::string index = loc_route->second.getIndex();

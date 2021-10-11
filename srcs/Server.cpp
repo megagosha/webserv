@@ -123,7 +123,7 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 					continue;
 				}
 				std::string req(FtUtils::recv(updates.second[i].data, updates.second[i].ident));
-				HttpRequest request(req);
+				HttpRequest request(req, FtUtils::ClientIpFromFd(updates.second[i].ident));
 				_pending_response.insert(std::make_pair(updates.second->ident, ity->second->second.generate(request)));
 			}
 			//client closing connection

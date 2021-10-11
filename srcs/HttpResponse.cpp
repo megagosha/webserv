@@ -98,7 +98,7 @@ std::string HttpResponse::getErrorHtml(std::string &error, std::string &reason)
 
 HttpResponse::HttpResponse()
 {
-
+    _cgi = false;
 }
 
 void HttpResponse::setError(short int code, const VirtualServer &server)
@@ -107,6 +107,7 @@ void HttpResponse::setError(short int code, const VirtualServer &server)
 	std::string reason_phrase;
 	std::string res;
 
+    _cgi = false;
 	reason_phrase = getReasonPhrase(code);
 	if (reason_phrase.empty())
 	{
@@ -128,25 +129,29 @@ void HttpResponse::setError(short int code, const VirtualServer &server)
 }
 
 //error response constructor
-HttpResponse::HttpResponse(short n, const VirtualServer &server)
+HttpResponse::HttpResponse(short n, const VirtualServer &server) : _serv(&server), _loc(NULL)
 {
 	setError(n, server);
 }
 
-HttpResponse::HttpResponse(const HttpRequest &request, std::string &request_uri, VirtualServer &server,
-						   Location &loc)
+HttpResponse::HttpResponse(short n, const VirtualServer &server, const Location &loc) : _serv(&server), _loc(&loc) {
+    setError(n, server);
+    if (n == 405)
+        insertHeader("Allow", loc.getAllowedMethodsField());
+}
+
+HttpResponse::HttpResponse(const HttpRequest &request, std::string &abs_path, const VirtualServer &server,
+						   const Location &loc) : _absolute_path(abs_path), _serv(&server), _loc(&loc)
 {
 	short err;
 
-	if (!loc.methodAllowed(request.getMethod()))
-	{
-		insertHeader("Allow", "GET, DELETE, POST");
-		setError(405, server);
-		return;
-	}
+    if (!loc.getCgiPass().empty()) {
+        _cgi = true;
+        return;
+    }
 	if (request.getMethod() == "GET")
 	{
-		err = writeFileToBuffer(request_uri);
+		err = writeFileToBuffer(abs_path);
 		if (err == 200)
 		{
 			setResponseString("HTTP/1.1", "200", "OK");
@@ -204,6 +209,11 @@ int HttpResponse::sendResponse(int fd)
 	std::map<std::string, std::string>::iterator it = _header.begin();
 	std::vector<char> headers_vec;
 
+    if (_cgi)
+    {
+        CgiHandler cgi(*this);
+        return (200);
+    }
 	setTimeHeader();
 	if (_body_size > 0)
 		insertHeader("Content-Length", std::to_string(_body.size()));
@@ -234,7 +244,8 @@ HttpResponse::HttpResponse(const HttpResponse &rhs) :
 		_response_string(rhs._response_string),
 		_header(rhs._header),
 		_body(rhs._body),
-		_body_size(rhs._body_size)
+		_body_size(rhs._body_size),
+        _cgi(rhs._cgi)
 {};
 
 HttpResponse &HttpResponse::operator=(const HttpResponse &rhs)
@@ -248,6 +259,7 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs)
 	_header = rhs.getHeader();
 	_body = rhs.getBody();
 	_body_size = rhs.getBodySize();
+    _cgi = rhs._cgi;
 	return (*this);
 }
 
@@ -284,6 +296,22 @@ const std::vector<char> &HttpResponse::getBody() const
 size_t HttpResponse::getBodySize() const
 {
 	return _body_size;
+}
+
+const std::string &HttpResponse::getAbsolutePath() const {
+    return _absolute_path;
+}
+
+const VirtualServer *HttpResponse::getServ() const {
+    return _serv;
+}
+
+const Location *HttpResponse::getLoc() const {
+    return _loc;
+}
+
+bool HttpResponse::isCgi() const {
+    return _cgi;
 }
 
 
