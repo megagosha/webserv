@@ -8,6 +8,7 @@
 #include "VirtualServer.hpp"
 #include "HttpRequest.hpp"
 #include "MimeType.hpp"
+#include "CgiHandler.hpp"
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -32,10 +33,23 @@ private:
 	std::string _status_code;
 	std::string _status_reason;
 	std::string _response_string;
+    std::string _absolute_path;
+public:
+    const std::string &getAbsolutePath() const;
+
+    const VirtualServer *getServ() const;
+
+    const Location *getLoc() const;
+
+    bool isCgi() const;
+
+private:
+    const VirtualServer *_serv;
+    const Location *_loc;
 	std::map<std::string, std::string> _header;
 	std::vector<char> _body;
 	std::size_t _body_size;
-
+    bool _cgi;
 	HttpResponse();
 
 	void setResponseString(std::string pr, std::string s_c, std::string s_r);
@@ -56,7 +70,9 @@ public:
 	//error response constructor
 	HttpResponse(short n, const VirtualServer &server);
 
-	HttpResponse(const HttpRequest &request, std::string &request_uri, VirtualServer &server, Location &loc);
+    HttpResponse(short n, const VirtualServer &server, const Location &loc);
+
+	HttpResponse(const HttpRequest &request, std::string &request_uri, const VirtualServer &server, const Location &loc);
 
 	HttpResponse(const HttpResponse &rhs);
 
