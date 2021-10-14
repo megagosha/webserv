@@ -9,7 +9,6 @@
 #include "HttpRequest.hpp"
 #include "MimeType.hpp"
 #include "KqueueEvents.hpp"
-#include "CgiHandler.hpp"
 #include <map>
 #include <iostream>
 #include <fstream>
