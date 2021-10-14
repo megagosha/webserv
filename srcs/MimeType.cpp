@@ -14,24 +14,24 @@ MimeType::MimeType(const std::string &path_to_conf)
 {
 	std::list<std::string> res;
 
-	FtUtils::tokenizeFileStream(path_to_conf, res);
+	Utils::tokenizeFileStream(path_to_conf, res);
 	std::list<std::string>::iterator it = res.begin();
 	std::list<std::string>::iterator end = res.end();
 	if (*it != "types")
 		throw MimeTypeException("Mime config error");
 	else
-		FtUtils::skipTokens( it, end, 2);
+		Utils::skipTokens(it, end, 2);
 	for (; it != end; ++it)
 	{
 		if (*it == "}")
 			break;
 		std::string mime_type;
 		mime_type = *it;
-		FtUtils::skipTokens( it, end, 1);
+		Utils::skipTokens(it, end, 1);
 		while (*it->rbegin() != ';')
 		{
 			_types.insert(std::make_pair(*it, mime_type));
-			FtUtils::skipTokens( it, end, 1);
+			Utils::skipTokens(it, end, 1);
 		}
 		if (*(it->rbegin()) == ';')
 		{

@@ -7,11 +7,11 @@ SRC_FILES	= check.cpp \
 				Socket.cpp \
 				Utils.cpp \
 				VirtualServer.cpp \
-				MimeType.cpp
+				MimeType.cpp \
 
 NAME	= webserv
 
-CC		= clang++
+CC		= clang++ -fsanitize=address
 RM		= rm -f
 
 CFLAGS	= -Wall -Wextra -Werror

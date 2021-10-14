@@ -8,13 +8,16 @@
 #include "VirtualServer.hpp"
 #include "HttpRequest.hpp"
 #include "MimeType.hpp"
+#include "KqueueEvents.hpp"
+#include "CgiHandler.hpp"
 #include <map>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
 #include <cstddef>
-
+#define PIPE_READ 0
+#define PIPE_WRITE 1
 //
 //class VirtualServer
 //{
@@ -24,6 +27,7 @@
 class VirtualServer;
 
 class Location;
+class CgiHandler;
 
 class HttpResponse
 {
@@ -32,9 +36,15 @@ private:
 	std::string _status_code;
 	std::string _status_reason;
 	std::string _response_string;
+	std::string _absolute_path;
+//	const VirtualServer *_serv;
 	std::map<std::string, std::string> _header;
 	std::vector<char> _body;
 	std::size_t _body_size;
+	std::map<std::string, std::string> _cgi_env;
+	std::string _cgi_path;
+//	bool _cgi;
+//	CgiHandler *_cgi_obj;
 
 	HttpResponse();
 
@@ -51,12 +61,25 @@ private:
 	void setError(short int code, const VirtualServer &server);
 
 public:
+	const std::string &getAbsolutePath() const;
+
+	const VirtualServer *getServ() const;
+
+	const Location *getLoc() const;
+
+	virtual ~HttpResponse();
+
+	bool isCgi() const;
+
 	static std::string getReasonPhrase(short error_code);
 
 	//error response constructor
 	HttpResponse(short n, const VirtualServer &server);
 
-	HttpResponse(const HttpRequest &request, std::string &request_uri, VirtualServer &server, Location &loc);
+	HttpResponse(short n, const VirtualServer &server, const Location &loc);
+
+	HttpResponse(const HttpRequest &request, std::string &request_uri, const VirtualServer &server,
+				 const Location &loc);
 
 	HttpResponse(const HttpResponse &rhs);
 
@@ -76,7 +99,10 @@ public:
 
 	const std::vector<char> &getBody() const;
 
+	void prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port);
+
 	size_t getBodySize() const;
+	int executeCgi();
 };
 //	HttpResponse(HttpRequest &x)
 //	{
