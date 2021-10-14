@@ -81,6 +81,13 @@ void KqueueEvents::addFd(int fd, bool write)
 	}
 }
 
+void KqueueEvents::addProcess(pid_t proc)
+{
+	EV_SET(_w_event, proc, EVFILT_PROC, EV_ADD, 0, 0, NULL);
+	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+		throw KqueueException();
+}
+
 void KqueueEvents::deleteFd(int fd, bool write)
 {
 	_fds.erase(fd);
@@ -93,9 +100,9 @@ void KqueueEvents::deleteFd(int fd, bool write)
 	}
 }
 
-std::pair<int, struct kevent *> KqueueEvents::getUpdates(void)
+std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout)
 {
-	struct timespec tmout = {5,     /* block for 5 seconds at most */
+	struct timespec tmout = {tout,     /* block for 5 seconds at most */
 							 0};
     std::cout << "kq max size " << _max_size << std::endl;
 	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);

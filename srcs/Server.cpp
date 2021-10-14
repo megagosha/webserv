@@ -33,9 +33,9 @@ Server::~Server()
 
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 {
-    signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 
-    FtUtils::tokenizeFileStream(config_file, _tok_list);
+	Utils::tokenizeFileStream(config_file, _tok_list);
 	std::list<std::string>::iterator end = _tok_list.end();
 	std::list<std::string>::iterator it = _tok_list.begin();
 	for (; it != end; ++it) // loop for servers
@@ -72,13 +72,13 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 				serv.setLocation(it, end);
 				continue;
 			}
-				++it;
+			++it;
 			//@todo THROW ERROR if nothing else worked
 		}
-		MimeType("mime.conf");
+		MimeType("/Users/megagosha/42/webserv/mime.conf");
 		validate(serv);
 		apply(serv);
-        FtUtils::skipTokens( it, end, 1);
+
 	}
 	run();
 }
@@ -92,12 +92,12 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 	struct sockaddr s_addr = {};
 	socklen_t s_len;
 
-    std::cout << "Kqueue update size " << updates.first << std::endl;
+	std::cout << "Kqueue update size " << updates.first << std::endl;
 	while (i < updates.first)
 	{
-        std::cout << "Socket " << updates.second[i].ident << " is available to read" << std::endl;
+		std::cout << "Socket " << updates.second[i].ident << " is available to read" << std::endl;
 		std::cout << (updates.second[i].flags & EV_EOF) << std::endl;
-        if (updates.second[i].filter == EVFILT_READ)
+		if (updates.second[i].filter == EVFILT_READ)
 		{
 			it = _sockets.find(updates.second[i].ident);
 			//accept new connection
@@ -122,9 +122,13 @@ void Server::process_requests(std::pair<int, struct kevent *> &updates)
 					++i;
 					continue;
 				}
-				std::string req(FtUtils::recv(updates.second[i].data, updates.second[i].ident));
-				HttpRequest request(req, FtUtils::ClientIpFromFd(updates.second[i].ident));
-				_pending_response.insert(std::make_pair(updates.second->ident, ity->second->second.generate(request)));
+				std::string req(Utils::recv(updates.second[i].data, updates.second[i].ident));
+				if (!req.empty())
+				{
+					HttpRequest request(req, Utils::ClientIpFromFd(updates.second[i].ident));
+					_pending_response.insert(
+							std::make_pair(updates.second->ident, ity->second->second.generate(request)));
+				}
 			}
 			//client closing connection
 			if (updates.second[i].flags & EV_EOF)
@@ -189,7 +193,7 @@ void Server::run(void)
 //	_kq.init();
 	for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
 	{
-        std::cout << "Added " << it->first << " to Kqueue" << std::endl;
+		std::cout << "Added " << it->first << " to Kqueue" << std::endl;
 		_kq.addFd(it->first);
 	}
 	while (1) //@todo implement  gracefull exit and catching errors
@@ -210,12 +214,12 @@ bool Server::validate(const VirtualServer &server)
 	if (server.validatePort() && server.validateHost() &&
 		server.validateErrorPages() && server.validateLocations())
 		return (true);
-    std::cout << server.validateErrorPages() << std::endl;
-    std::cout << server.validatePort() << std::endl;
-    std::cout << server.validateHost() << std::endl;
-    std::cout << server.validateLocations() << std::endl;
+	std::cout << server.validateErrorPages() << std::endl;
+	std::cout << server.validatePort() << std::endl;
+	std::cout << server.validateHost() << std::endl;
+	std::cout << server.validateLocations() << std::endl;
 
-    throw ServerException("Config validation failed");
+	throw ServerException("Config validation failed");
 }
 
 void Server::apply(VirtualServer &serv)
@@ -240,7 +244,7 @@ Server &Server::operator=(const Server &rhs)
 	_sockets = rhs._sockets;
 	_connections = rhs._connections;
 	_tok_list = rhs._tok_list;
-	_pending_response= rhs._pending_response;
+	_pending_response = rhs._pending_response;
 	_kq = rhs._kq;
 	return (*this);
 }

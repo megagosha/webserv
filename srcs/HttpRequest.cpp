@@ -19,13 +19,15 @@ HttpRequest::HttpRequest() {
 }
 
 void HttpRequest::parse_request_uri(void) {
-    _query_string = _request_uri.substr(_request_uri.find('?'), _request_uri.size());
-    std::string no_query = _request_uri.substr(0, _request_uri.find('?'));
-    _normalized_path = FtUtils::normalizePath(no_query);
+
+    _query_string = Utils::getExt(_request_uri, '?');
+
+    std::string no_query = Utils::getWithoutExt(_request_uri, '?');
+    _normalized_path = Utils::normalizePath(no_query);
 }
 
 //reserve field memory
-HttpRequest::HttpRequest(std::string &request, const std::string client_ip) : _client_ip(client_ip) {
+HttpRequest::HttpRequest(std::string &request, const std::string& client_ip) : _client_ip(client_ip) {
     _chunked = false;
     _method.reserve(MAX_METHOD);
     _request_uri.reserve(MAX_URI);
@@ -139,6 +141,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string client_ip) : _c
         k++;
     }
     parse_request_uri();
+
 }
 
 const std::string &HttpRequest::getMethod() const {

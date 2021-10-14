@@ -54,7 +54,7 @@ public:
 	HttpRequest &operator=(const HttpRequest &rhs);
 
 	//reserve field memory
-	HttpRequest(std::string &request, const std::string client_ip);
+	HttpRequest(std::string &request, const std::string& client_ip);
 
 	const std::string &getMethod() const;
 

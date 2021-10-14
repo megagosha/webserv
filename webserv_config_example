@@ -8,12 +8,12 @@
 #error_page: error_code relative_path (relative to root)
 server {
     listen 127.0.0.1;
-    port 8081;
+    port 8080;
     error_page 404 www/error/404.html;
     error_page 404 www/error/405.html;
     client_max_body_size 1024;
  location / {
-    root www/final/;
+    root /Users/megagosha/42/webserv/www/final/;
     methods POST GET DELETE;
     autoindex on; #turned on by default;
     index index.html; #specify default file
@@ -21,10 +21,12 @@ server {
  }
  location /images/hero.jpg
  {
+     root /Users/megagosha/42/webserv/www/final/;
     return /final/images/profile.jpg;
  }
  location *.php {
- cgi_pass /usr/bin/php; #IS NOT VALID CGI specify full path
+    root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+    cgi_pass /usr/local/bin/php-cgi; #IS NOT VALID CGI specify full path
  }
 }
 

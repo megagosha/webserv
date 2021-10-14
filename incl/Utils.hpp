@@ -14,7 +14,9 @@
 #include <list>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-struct FtUtils
+#include <map>
+
+struct Utils
 {
 
 public:
@@ -32,7 +34,7 @@ public:
 						   std::list<std::string>::iterator &end, int num);
 
 	static void tokenizeFileStream(std::string const &file_path,
-											std::list<std::string> &res);
+								   std::list<std::string> &res);
 
 	class GeneralException : public std::exception
 	{
@@ -44,7 +46,17 @@ public:
 
 		const char *what() const throw();
 	};
-    static std::string ClientIpFromFd(int fd);
+
+	static std::string ClientIpFromFd(int fd);
+
+	static std::string getExt(const std::string &str, char delim);
+
+	static std::string getWithoutExt(const std::string &str, char delim);
+
+	static char **mapToEnv(const std::map<std::string, std::string> &env);
+
+	static void clearNullArr(char **arr);
+
 };
 
 #endif

@@ -94,6 +94,8 @@ public:
 
 	std::map<std::string, Location>::iterator findRouteFromUri(std::string normalized_uri);
 
+	std::map<std::string, Location>::iterator checkCgi(std::string const &path);
+
 	//1. get request path (remove query, normalize path, find location, append root, create response)
 	//2.
 	HttpResponse generate(const HttpRequest &request);
