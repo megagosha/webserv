@@ -12,11 +12,11 @@
 class KqueueEvents
 {
 private:
-	const int		_max_size;
-	int 			_queue_fd;
-	std::set<int>	_fds;
-	struct kevent	*_w_event;
-	struct kevent	*_res_event;
+	const int _max_size;
+	int _queue_fd;
+	std::set<int> _fds;
+	struct kevent *_w_event;
+	struct kevent *_res_event;
 
 	KqueueEvents();
 
@@ -35,9 +35,11 @@ public:
 
 	void addFd(int fd, bool write = false);
 
+	void addProcess(pid_t proc);
+
 	void deleteFd(int fd, bool write = false);
 
-	std::pair<int, struct kevent *> getUpdates(void);
+	std::pair<int, struct kevent *> getUpdates(int = 5);
 
 	class KqueueException : public std::exception
 	{

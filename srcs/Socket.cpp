@@ -83,7 +83,7 @@ Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv) :
     addr.sin_len = sizeof(addr);
     if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         close(fd);
-        throw SocketException(std::strerror(errno));
+       throw SocketException(std::strerror(errno));
     }
     if (listen(fd, MAX_AWAIT_CONN) == -1) {
         close(fd);
@@ -111,10 +111,11 @@ HttpResponse Socket::generate(const HttpRequest &request) {
         return (HttpResponse(i, *_default_config));
         //@todo generate 400
     }
-    if (it->second.empty())
-        _default_config->generate(request);
     //truncate port value in host value field
     std::string host_value = it->second.substr(0, it->second.find(':'));
+
+    if (it->second.empty())
+        _default_config->generate(request);
 
     std::map<std::string, VirtualServer>::iterator ity;
     ity = _virtual_servers.find(it->second);

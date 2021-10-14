@@ -17,6 +17,27 @@ VirtualServer::method_type hashMethod(std::string const &inString)
 	return (VirtualServer::OTHER);
 }
 
+std::string Location::getAllowedMethodsField() const
+{
+    std::string res;
+
+    if (_methods[2])
+        res.insert(0, "DELETE");
+    if (_methods[1])
+    {
+        if (!res.empty())
+            res.insert(0, ", ");
+        res.insert(0, "POST");
+    }
+    if (_methods[0])
+    {
+        if (!res.empty())
+            res.insert(0, ", ");
+        res.insert(0, "GET");
+    }
+    return (res);
+}
+
 //	bool VirtualServer::Location::isAutoindexOn() const
 //	{
 //		return _autoindex_on;
@@ -105,16 +126,16 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 						   std::list<std::string>::iterator &end, std::string path)
 {
 
-	FtUtils::skipTokens(it, end, 2);
+	Utils::skipTokens(it, end, 2);
 
-	if (path[0] == '*' && *it == "cgi_pass")
-	{
-		FtUtils::skipTokens(it, end, 1);
-        _cgi_pass = *it;
-        //                location.insert(std::make_pair(path, loc));
-		FtUtils::skipTokens(it, end, 2);
-		return;
-	}
+//	if (path[0] == '*' && *it == "cgi_pass")
+//	{
+//		Utils::skipTokens(it, end, 1);
+//        _cgi_pass = *it;
+//        //                location.insert(std::make_pair(path, loc));
+//		Utils::skipTokens(it, end, 2);
+//		return;
+//	}
 	std::list<std::string>::iterator check;
 	while (it != end && *it != "}")
 	{
@@ -122,11 +143,19 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 		if (*it == "root" && (++it) != end)
 		{
 			_root = *it;
-			FtUtils::skipTokens(it, end, 2);
+			Utils::skipTokens(it, end, 2);
+		}
+	  	if (path[0] == '*' && *it == "cgi_pass")
+		{
+			Utils::skipTokens(it, end, 1);
+			_cgi_pass = *it;
+			//                location.insert(std::make_pair(path, loc));
+			std::cout << "cgi parsed" << *it << std::endl;
+			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "methods")
 		{
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 
 			_methods[0] = false;
 			_methods[1] = false;
@@ -147,43 +176,44 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 					default:
 						throw VirtualServer::VirtualServerException("Method not supported " + *it);
 				}
-				FtUtils::skipTokens(it, end, 1);
+				Utils::skipTokens(it, end, 1);
 			}
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 		}
 		if (*it == "autoindex")
 		{
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 			if (*it == "on" || *it == "off")
 				_autoindex_on = *it == "on";
 			else
 				throw VirtualServer::VirtualServerException("Autoindex error: ;");
-			FtUtils::skipTokens(it, end, 2);
+			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "return")
 		{
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 			_ret = *it;
-			FtUtils::skipTokens(it, end, 2);
+			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "index")
 		{
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 			_index = *it;
-			FtUtils::skipTokens(it, end, 2);
+			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "file_upload")
 		{
-			FtUtils::skipTokens(it, end, 1);
+			Utils::skipTokens(it, end, 1);
 			_file_upload = *it;
-			FtUtils::skipTokens(it, end, 2);
+			Utils::skipTokens(it, end, 2);
 		}
 		if (it != end && *it == "}")
 			break;
 		if (it == check)
 			throw VirtualServer::VirtualServerException("Error location parsing");
+
 	}
 	if (it == end || *it != "}")
 		throw VirtualServer::VirtualServerException("Syntax error: }");
-	FtUtils::skipTokens(it, end, 1);
+	Utils::skipTokens(it, end, 1);
 }
