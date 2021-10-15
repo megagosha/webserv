@@ -11,6 +11,8 @@
 #include "KqueueEvents.hpp"
 #include <map>
 #include <iostream>
+#include<fstream>
+
 #include <fstream>
 #include <vector>
 #include <string>
@@ -26,7 +28,6 @@
 class VirtualServer;
 
 class Location;
-class CgiHandler;
 
 class HttpResponse
 {
@@ -42,6 +43,7 @@ private:
 	std::size_t _body_size;
 	std::map<std::string, std::string> _cgi_env;
 	std::string _cgi_path;
+    HttpRequest _request;
 //	bool _cgi;
 //	CgiHandler *_cgi_obj;
 
