@@ -75,7 +75,10 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 			++it;
 			//@todo THROW ERROR if nothing else worked
 		}
-		MimeType("/Users/megagosha/42/webserv/mime.conf");
+        char PathName[PATH_MAX];
+        getwd(PathName);
+        std::string m_path = (std::string)PathName + "/mime.conf";
+		MimeType(m_path.c_str());
 		validate(serv);
 		apply(serv);
 
@@ -219,7 +222,8 @@ bool Server::validate(const VirtualServer &server)
 	std::cout << server.validateHost() << std::endl;
 	std::cout << server.validateLocations() << std::endl;
 
-	throw ServerException("Config validation failed");
+	return (true);
+	//throw ServerException("Config validation failed");
 }
 
 void Server::apply(VirtualServer &serv)
