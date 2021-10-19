@@ -23,7 +23,7 @@ struct Utils {
 public:
     static bool fileExistsAndReadable(const std::string &name);
 
-    static std::string recv(int bytes, int socket);
+    static void recv(long bytes, int socket, std::string &res);
 
     static bool fileExistsAndExecutable(const char *file);
 
@@ -47,7 +47,7 @@ public:
         const char *what() const throw();
     };
 
-    static std::string ClientIpFromFd(int fd);
+    static std::string ClientIpFromSock(sockaddr *addr);
 
     static std::string getExt(const std::string &str, char delim);
 

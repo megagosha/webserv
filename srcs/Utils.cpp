@@ -23,12 +23,10 @@ bool Utils::fileExistsAndWritable(const std::string &name) {
     }
 };
 
-std::string Utils::recv(int bytes, int socket) {
-    std::string output(bytes, 0);
-    if (read(socket, &output[0], bytes) < 0) {
-        std::cerr << "Failed to read data from socket.\n";
+void Utils::recv(long bytes, int socket, std::string &res) {
+    if (read(socket, &res[0], bytes) < 0) {
+		throw GeneralException("Error while reading socket");
     }
-    return output;
 }
 
 bool Utils::fileExistsAndExecutable(const char *file) {
@@ -161,15 +159,16 @@ void Utils::tokenizeFileStream(std::string const &file_path, std::list<std::stri
     is.close();
 }
 
-std::string Utils::ClientIpFromFd(int fd) {
-    sockaddr_in addr = {};
-    socklen_t len;
+std::string Utils::ClientIpFromSock(sockaddr *addr) {
+//    sockaddr_in addr = {};
+//    socklen_t len;
     char ip[INET6_ADDRSTRLEN];
-    const char *str;
-    bzero(&addr, sizeof(addr));
-    len = sizeof(addr);
-    getsockname(fd, (struct sockaddr *) &addr, &len);
-    str = inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+//    const char *str;
+//    bzero(&addr, sizeof(addr));
+//    len = sizeof(addr);
+//    getsockname(fd, (struct sockaddr *) &addr, &len);
+
+    inet_ntop(AF_INET, addr, ip, sizeof(ip));
     return std::string(ip);
 }
 

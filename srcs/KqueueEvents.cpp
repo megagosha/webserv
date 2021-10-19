@@ -8,12 +8,17 @@
 KqueueEvents::KqueueEvents() : _max_size(0)
 {};
 
+int KqueueEvents::getQueueFd(void) const
+{
+	return (_queue_fd);
+}
+
 KqueueEvents::KqueueEvents(int max_size) : _max_size(max_size)
 {
 	_queue_fd = kqueue();
 	if (_queue_fd == -1)
 		throw KqueueException();
-	_w_event = new struct kevent;
+	_w_event   = new struct kevent;
 	_res_event = new struct kevent[_max_size];
 }
 
@@ -23,7 +28,7 @@ KqueueEvents::KqueueEvents(int max_size, int connection_socket) : _max_size(max_
 	_queue_fd = kqueue();
 	if (_queue_fd == -1)
 		throw KqueueException();
-	_w_event = new struct kevent;
+	_w_event   = new struct kevent;
 	_res_event = new struct kevent[_max_size];
 	EV_SET(_w_event, connection_socket, EVFILT_READ, EV_ADD, 0, 0, NULL);
 	if (kevent(_queue_fd, _w_event, 1, NULL, 0, NULL) == -1)
@@ -39,11 +44,11 @@ void KqueueEvents::init(void)
 
 KqueueEvents::KqueueEvents(KqueueEvents const &ke) : _max_size(ke._max_size)
 {
-	_queue_fd = ke._queue_fd;
-	_fds = ke._fds;
-	_w_event = new struct kevent;
+	_queue_fd  = ke._queue_fd;
+	_fds       = ke._fds;
+	_w_event   = new struct kevent;
 	_res_event = new struct kevent[_max_size];
-	_w_event = ke._w_event;
+	_w_event   = ke._w_event;
 	_res_event = ke._res_event;
 }
 
@@ -54,9 +59,9 @@ KqueueEvents &KqueueEvents::operator=(KqueueEvents const &ke)
 	if (_max_size != ke._max_size)
 		throw KqueueException();
 	_queue_fd = ke._queue_fd;
-	_fds = ke._fds;
-	_w_event = ke._w_event;
-	_w_event = ke._res_event;
+	_fds      = ke._fds;
+	_w_event  = ke._w_event;
+	_w_event  = ke._res_event;
 	return (*this);
 }
 
@@ -104,7 +109,7 @@ std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout)
 {
 	struct timespec tmout = {tout,     /* block for 5 seconds at most */
 							 0};
-    std::cout << "kq max size " << _max_size << std::endl;
+	std::cout << "kq max size " << _max_size << std::endl;
 	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);
 	return (std::make_pair(res, _res_event));
 }

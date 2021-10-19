@@ -20,11 +20,6 @@ const char *Server::ServerException::what() const throw()
 //@todo create destructor
 Server::~Server()
 {
-	//close all connections.
-	for (std::map<int, iter>::iterator it = _connections.begin(); it != _connections.end(); ++it)
-	{
-		close(it->first);
-	}
 	for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
 	{
 		it->second.clear();
@@ -78,108 +73,99 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 		MimeType("/Users/megagosha/42/webserv/mime.conf");
 		validate(serv);
 		apply(serv);
-
+	}
+	for (std::map<int, Socket>::iterator ity = _sockets.begin(); ity != _sockets.end(); ++ity)
+	{
+		std::cout << "Socket created on fd " << ity->first << " internal " << ity->second.getSocketFd() << std::endl;
 	}
 	run();
 }
 
-void Server::process_requests(std::pair<int, struct kevent *> &updates)
+void Server::acceptConnection(std::map<int, Socket>::iterator it)
+{
+	std::pair<int, Session *> session;
+
+	session = it->second.acceptConnection();
+	_sessions.insert(session);
+	_kq.addFd(session.first, true);
+}
+
+void Server::prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes)
+{
+	if (sess_iter == _sessions.end())
+	{
+		std::cout << "Should never happend" << std::endl;
+		return;
+	}
+	sess_iter->second->parseRequest(bytes);
+	sess_iter->second->prepareResponse();
+	_pending_sessions.insert(sess_iter->first);
+}
+
+void Server::closeConnection(int cur_fd)
+{
+	std::map<int, Session *>::iterator sess_iter;
+
+	sess_iter = _sessions.find(cur_fd);
+	if (sess_iter == _sessions.end())
+		throw ServerException("WTF");
+	sess_iter->second->end();
+	_sessions.erase(cur_fd);
+	_pending_sessions.erase(cur_fd);
+	_kq.deleteFd(cur_fd, true);
+}
+
+void Server::processRequests(std::pair<int, struct kevent *> &updates)
 {
 	int i = 0;
-	int new_fd = 0;
 	std::map<int, Socket>::iterator it;
-	std::map<int, iter>::iterator ity;
-	struct sockaddr s_addr = {};
-	socklen_t s_len;
+	std::map<int, Session *>::iterator sess_iter;
+	int16_t cur_filter;
+	uint16_t cur_flags;
+	int cur_fd;
 
-	std::cout << "Kqueue update size " << updates.first << std::endl;
+//	std::cout << "Kqueue update size " << updates.first << std::endl;
 	while (i < updates.first)
 	{
-		std::cout << "Socket " << updates.second[i].ident << " is available to read" << std::endl;
-		std::cout << (updates.second[i].flags & EV_EOF) << std::endl;
-		if (updates.second[i].filter == EVFILT_READ)
+		cur_filter = updates.second[i].filter;
+		cur_fd = updates.second[i].ident;
+		cur_flags = updates.second[i].flags;
+		if (cur_filter == EVFILT_READ)
 		{
-			it = _sockets.find(updates.second[i].ident);
+			it = _sockets.find(cur_fd);
 			//accept new connection
 			if (it != _sockets.end())
-			{
-				new_fd = accept(it->first, &s_addr, &s_len);
-				if (new_fd < 0)
-				{
-					std::cout << "error accepting connection" << std::strerror(errno) << std::endl;
-					++i;
-					continue;
-				}
-				_connections.insert(std::make_pair(new_fd, it));
-				_kq.addFd(new_fd, true); //@todo catch error
-			}
-			if (it == _sockets.end())
-			{
-				ity = _connections.find(updates.second[i].ident);
-				if (ity == _connections.end())
-				{
-					std::cout << "Error in connection logic" << std::endl; //@todo delete if statement here
-					++i;
-					continue;
-				}
-				std::string req(Utils::recv(updates.second[i].data, updates.second[i].ident));
-				if (!req.empty())
-				{
-					HttpRequest request(req, Utils::ClientIpFromFd(updates.second[i].ident));
-					_pending_response.insert(
-							std::make_pair(updates.second->ident, ity->second->second.generate(request)));
-				}
-			}
-			//client closing connection
-			if (updates.second[i].flags & EV_EOF)
-			{
-				close(updates.second[i].ident);
-				_kq.deleteFd(updates.second->ident, true); //@todo ?kqueue may clear itself on close(fd)?
-				_connections.erase(updates.second[i].ident);
-			}
+				acceptConnection(it);
+			else
+				prepareResponse(_sessions.find(cur_fd), updates.second[i].data);
+			if (cur_flags & EV_EOF)
+				closeConnection(cur_fd);
 		}
 		i++;
 	}
 }
 
-//HttpResponse Server::generateResponse(HttpRequest &request)
-//{
-//	HttpResponse response;
-//	VirtualServer serv;
-//
-//	std::map<std::string, std::string>::iterator rq_it;
-//	rq_it = request._header_fields.find("Host");
-//	if (rq_it == request._header_fields.end())
-//	{
-//		//@todo return  400 ! implement error constructors for HttpResonse
-//	}
-//	for (std::map<int, VirtualServer>::iterator it = servers.begin(); it != servers.end(); ++it)
-//	{
-//		if (it->second.getServerName() == rq_it->second &&)
-//		{
-//
-//		}
-//	}
-//
-//}
 
-void Server::process_response(std::pair<int, struct kevent *> &updates)
+void Server::processResponse(std::pair<int, struct kevent *> &updates)
 {
 	int i = 0;
-	std::map<int, HttpResponse>::iterator it;
+	std::map<int, Session *>::iterator it;
+	int cur_fd;
 
 	while (i < updates.first)
 	{
 		if (updates.second[i].filter == EVFILT_WRITE)
 		{
-			it = _pending_response.find(updates.second[i].ident);
-			if (it != _pending_response.end())
+			cur_fd = updates.second[i].ident;
+			if (_pending_sessions.find(cur_fd) != _pending_sessions.end())
 			{
-				it->second.sendResponse(it->first);
-				_pending_response.erase(it);
-				close(updates.second->ident);
-				_kq.deleteFd(updates.second->ident, true);
-				_connections.erase(updates.second[i].ident);
+				it = _sessions.find(cur_fd);
+				it->second->send();
+				_pending_sessions.erase(cur_fd);
+				if (it->second->ifEnd())
+				{
+					closeConnection(cur_fd);
+				}
 			}
 		}
 		++i;
@@ -190,7 +176,6 @@ void Server::run(void)
 {
 	std::pair<int, struct kevent *> updates;
 
-//	_kq.init();
 	for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it)
 	{
 		std::cout << "Added " << it->first << " to Kqueue" << std::endl;
@@ -198,14 +183,13 @@ void Server::run(void)
 	}
 	while (1) //@todo implement  gracefull exit and catching errors
 	{
-
 //		if (exit_flag)
 //		{
 //			return (EXIT_SUCCESS);
 //		}
 		updates = _kq.getUpdates();
-		process_requests(updates);
-		process_response(updates);
+		processRequests(updates);
+		processResponse(updates);
 	}
 }
 
@@ -242,18 +226,18 @@ Server &Server::operator=(const Server &rhs)
 	if (this == &rhs)
 		return (*this);
 	_sockets = rhs._sockets;
-	_connections = rhs._connections;
+	_sessions = rhs._sessions;
+	_pending_sessions = rhs._pending_sessions;
 	_tok_list = rhs._tok_list;
-	_pending_response = rhs._pending_response;
 	_kq = rhs._kq;
 	return (*this);
 }
 
 Server::Server(const Server &rhs) :
 		_sockets(rhs._sockets),
-		_connections(rhs._connections),
+		_sessions(rhs._sessions),
+		_pending_sessions(rhs._pending_sessions),
 		_tok_list(rhs._tok_list),
-		_pending_response(rhs._pending_response),
 		_kq(rhs._kq)
 {}
 

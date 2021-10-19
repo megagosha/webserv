@@ -8,6 +8,8 @@ SRC_FILES	= check.cpp \
 				Utils.cpp \
 				VirtualServer.cpp \
 				MimeType.cpp \
+				Session.cpp
+
 
 NAME	= webserv
 

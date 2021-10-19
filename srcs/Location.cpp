@@ -82,6 +82,7 @@ Location::Location() : _autoindex_on(true),
 					   _file_upload(""),
 					   _index("index.html"), _root("/"), _cgi_pass(""), _ret("")
 {
+	_methods.reserve(3);
     _methods[0] = true;
 	_methods.insert(_methods.begin() + 1, 2, false);
 }
@@ -113,7 +114,7 @@ Location::~Location()
 {
 }
 
-bool Location::methodAllowed(const std::string &method)
+bool Location::methodAllowed(const std::string &method) const
 {
 	switch (hashMethod(method))
 	{

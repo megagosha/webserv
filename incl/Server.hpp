@@ -16,27 +16,59 @@
 #include <iostream>
 #include "Utils.hpp"
 #include <list>
+#include "Session.hpp"
 #include "MimeType.hpp"
+
 #define MAX_AWAIT_CONN 100
 #define MAX_KQUEUE_EV 100
 
+/*
+ * Server {
+ * Sockets int fd - Socket obj
+ * Sessions int client_fd session_iterator
+ * }
+ *
+ * Socket {
+ * v_serv_map <string host_name, VirtualServer obj>
+ * sessions_map <int client_fd, Session onnectionObj
+ *
+ * acceptConnection()
+ * std::pair<int, *Session> sessions_map.insert(new_client_fd, new_client_session);
+ * return (new_client_fd, this);
+ *
+ * processRequestFd(int) {
+ * find SessionPutNewRequest();
+ *
+ * }
+ *
+ * Session {
+ * HttpRequest *request
+ * HttpResponse *response
+ * bool response_sent
+ *
+ * 3 timeoutvals
+ * bool keep alive;
+ * }
+ *
+ * Pseudo
+ * 1. read fd recieved from kqueue
+ * 2. check Sockets for fd
+ * 3. if fd found -> socket->acceptConnection();
+ * 4. if fd not found search in sessions by fd;
+ * 5. if found socket->proccessRequest(fd);
+ */
 class Socket;
-//@todo Coplien form should be implemented
+
 class Server
 {
 	typedef std::map<int, Socket>::iterator iter;
 
 private:
-	std::map<int, Socket> _sockets; // <socket fd, socket obj>
-	std::map<int, iter> _connections; // <connection fd, socket iterator>
-//	std::string config_res;
-	std::list<std::string> _tok_list;
-//    std::map<int, VirtualServer> servers;
-	std::map<int, HttpResponse> _pending_response;
-	//pair connection fd with server fd
-//    std::map<int, int> connections;
-	KqueueEvents _kq;
-
+	std::map<int, Socket>    _sockets; // <socket fd, socket obj>
+	std::map<int, Session *> _sessions;
+	std::set<int>            _pending_sessions;
+	std::list<std::string>   _tok_list;
+	KqueueEvents             _kq;
 	Server();
 
 public:
@@ -50,19 +82,15 @@ public:
 
 	Server(const std::string &config_file);
 
-	void process_requests(std::pair<int, struct kevent *> &updates);
+	void processRequests(std::pair<int, struct kevent *> &updates);
 
-//	HttpResponse generateResponse(HttpRequest &request);
-
-	void process_response(std::pair<int, struct kevent *> &updates);
+	void processResponse(std::pair<int, struct kevent *> &updates);
 
 	void run(void);
 
 	bool validate(const VirtualServer &server);
 
 	void apply(VirtualServer &serv);
-
-	void init_keys();
 
 	class ServerException : public std::exception
 	{
@@ -74,6 +102,12 @@ public:
 
 		const char *what() const throw();
 	};
+
+	void prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes);
+
+	void acceptConnection(std::map<int, Socket>::iterator it);
+
+	void closeConnection(int cur_fd);
 };
 
-#endif //UNTITLED_SERVER_HPP
+#endif //SERVER_HPP

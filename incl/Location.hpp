@@ -43,7 +43,7 @@ public:
 
     ~Location();
 
-    bool methodAllowed(const std::string &method);
+    bool methodAllowed(const std::string &method) const;
 
     void setLocation(std::list<std::string>::iterator &it,
                      std::list<std::string>::iterator &end, std::string path);
