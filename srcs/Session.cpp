@@ -5,14 +5,14 @@
 #include "Session.hpp"
 
 Session::Session()
-		: _fd(), _server_socket(), _response(nullptr), _keep_alive(false), _response_sent(), _connection_timeout(),
+		: _fd(), _server_socket(), _response(nullptr), _s_addr(), _keep_alive(false), _response_sent(), _connection_timeout(),
 		  _receive_timeout(),
 		  _last_update()
 {
 
 }
 
-Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _keep_alive(rhs._keep_alive),
+Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _response(), _s_addr(), _keep_alive(rhs._keep_alive),
 									   _response_sent(rhs._response_sent),
 									   _connection_timeout(rhs._connection_timeout),
 									   _receive_timeout(rhs._receive_timeout), _last_update(rhs._last_update)
@@ -37,7 +37,7 @@ Session &Session::operator=(const Session &rhs)
 }
 
 Session::Session(Socket *sock)
-		: _fd(), _server_socket(sock), _response(nullptr), _keep_alive(), _response_sent(), _connection_timeout(),
+		: _fd(), _server_socket(sock), _response(nullptr), _s_addr(), _keep_alive(), _response_sent(), _connection_timeout(),
 		  _receive_timeout(),
 		  _last_update()
 {
@@ -45,7 +45,7 @@ Session::Session(Socket *sock)
 }
 
 Session::Session(int socket_fd, Socket *server_socket, sockaddr addr) :
-		_fd(socket_fd), _server_socket(server_socket), _response(nullptr), _s_addr(addr), _keep_alive(false)
+		_fd(socket_fd), _server_socket(server_socket), _response(nullptr), _s_addr(addr), _keep_alive(false), _response_sent(), _connection_timeout(), _receive_timeout(), _last_update()
 {
 	time(&_last_update);
 }

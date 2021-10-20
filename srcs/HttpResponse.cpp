@@ -18,6 +18,14 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server)
 	setError(code, server);
 }
 
+
+/*
+ * A server MUST NOT send a Content-Length header field in
+ * any response with a status code of 1xx (Informational) or 204 (No Content).
+ * A server MUST NOT send a Content-Length header field in any 2xx (Successful)
+ * response to a CONNECT request (Section 4.3.6 of [RFC7231]).
+
+ */
 HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 {
 	const Location *loc;
@@ -265,78 +273,6 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server)
 	_body_size = _body.size();
 }
 
-
-
-//HttpResponse::HttpResponse(const HttpRequest &request, std::string &abs_path, const VirtualServer &server,
-//						   const Location &loc) : _absolute_path(abs_path)
-//{
-//	short err;
-//
-//	_request = request;
-//	if (request.getMethod() == "DELETE")
-//	{
-//		if (!Utils::fileExistsAndWritable(abs_path))
-//		{
-//			if (errno == EACCES)
-//				setError(403, server);
-//			else
-//				setError(410, server);
-//		} else
-//		{
-//			if (std::remove(abs_path.data()) != 0)
-//				setError(500, server);
-//			else
-//				setResponseString("HTTP/1.1", "200", "OK");
-//		}
-//		return;
-//	}
-//
-//	if (!loc.getCgiPass().empty())
-//	{
-//		prepareCgiEnv(request, abs_path, server.getPort());
-//		_cgi_path = loc.getCgiPass();
-//		return;
-//	}
-//	if (request.getMethod() == "POST")
-//	{
-//		if (loc.isFileUploadOn())
-//		{
-//
-//			int num_files = Utils::countFilesInFolder(loc.getFileUploadPath());
-//			std::ofstream rf("uploaded_file" + std::to_string(num_files + 1), std::ios::out | std::ios::binary);
-//			if (!rf)
-//			{
-//				setError(500, server);
-//				return;
-//			} else
-//			{
-//				rf.write(request.getBody().data(), request.getBody().size());
-//				rf.close();
-//				setResponseString("HTTP/1.1", "200", "OK");
-//				return;
-//			}
-//		} else
-//		{
-//			setError(404, server);
-//			return;
-//		}
-//	}
-//	if (request.getMethod() == "GET")
-//	{
-//		err = writeFileToBuffer(abs_path);
-//		if (err == 200)
-//		{
-//			setResponseString("HTTP/1.1", "200", "OK");
-//			return;
-//		} else
-//		{
-//			setError(err, server);
-//			return;
-//		}
-//	} else
-//		setError(900, server);
-//}
-
 void
 HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port)
 {
@@ -374,6 +310,8 @@ HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absol
 	_cgi_env["SERVER_SOFTWARE"] = "topserv_v0.1";
 }
 
+
+//@todo rewrite
 HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 {
 	int fd[2];
@@ -778,3 +716,5 @@ const std::string HttpResponse::HTTP_REASON_NETWORK_AUTHENTICATION_REQUIRED = "N
 const std::string HttpResponse::HTTP_REASON_UNKNOWN = "???";
 const std::string HttpResponse::DATE = "Date";
 const std::string HttpResponse::SET_COOKIE = "Set-Cookie";
+
+

@@ -16,6 +16,7 @@
 #include <map>
 #include <iostream>
 #include "Utils.hpp"
+#include "HttpResponse.hpp"
 enum Limits
 {
 	MAX_METHOD = 8,
@@ -40,6 +41,9 @@ private:
 	std::map<std::string, std::string> _header_fields;
 	std::string							_body;
     std::string                         _client_ip;
+    unsigned long                        _content_length;
+    bool                                _ready;
+    HttpResponse::HTTPStatus            _parsing_error;
 public:
     const std::string &getClientIp() const;
 
@@ -56,6 +60,8 @@ public:
 	//reserve field memory
 	HttpRequest(std::string &request, const std::string& client_ip);
 
+    void parseChunked(const std::string &request, unsigned long i);
+    void appendBody(std::string &buff);
 	const std::string &getMethod() const;
 
 	const std::string &getRequestUri() const;

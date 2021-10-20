@@ -131,7 +131,7 @@ private:
 
 	void setTimeHeader(void);
 
-	std::string getErrorHtml(std::string &error, std::string &reason);
+	static std::string getErrorHtml(std::string &error, std::string &reason);
 
 	void setError(HTTPStatus code, const VirtualServer *server);
 
@@ -155,15 +155,6 @@ public:
 //	bool isCgi() const;
 
 	static const std::string &getReasonForStatus(HTTPStatus status);
-
-	HttpResponse(short n,
-				 const VirtualServer &server,
-				 const Location &loc);
-
-	HttpResponse(
-			const HttpRequest &request, std::string &request_uri,
-			const VirtualServer &server,
-			const Location &loc);
 
 	HttpResponse(
 			const HttpResponse &rhs);
@@ -266,42 +257,5 @@ public:
 	static const std::string DATE;
 	static const std::string SET_COOKIE;
 };
-//	HttpResponse(HttpRequest &x)
-//	{
-//		_proto = "HTTP/1.1";
-//		_status_code = "200";
-//		_status_reason = "OK";
-//		_response_string = _proto + " " + _status_code + " " + _status_reason + "\r\n";
-//
-//
-//		int file_len = 10000;
-//		result.reserve(_response_string.length() + file_len + 100);
-//		result.insert(result.begin(), _response_string.begin(), _response_string.end());
-//
-//		for (std::map<std::string, std::string>::iterator it = _header.begin(); it != _header.end(); ++it)
-//		{
-//			result.insert(result.end(), (*it).first.begin(), (*it).first.end());
-//			result.push_back(' ');
-//			result.insert(result.end(), (*it).second.begin(), (*it).second.end());
-//			result.push_back('\r');
-//			result.push_back('\n');
-//		}
-//		result.push_back('\r');
-//		result.push_back('\n');
-//
-//		x._request_uri = "index.html";
-//		std::ifstream file(x._request_uri, std::ifstream::in | std::ifstream::binary);
-//		if (file)
-//		{
-//			file.seekg(0, file.end);
-//			int length = file.tellg();
-//			file.seekg(0, file.beg);
-//			result.reserve(result.size() + length);
-//			result.insert(result.end(), std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-//			if (file.peek() != EOF)
-//				throw std::exception();
-//			file.close();
-//		}
-//	}
 
 #endif
