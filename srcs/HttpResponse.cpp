@@ -42,6 +42,13 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 	path = req->getNormalizedPath();
 	path = path.replace(0, 1, loc->getRoot());
 
+	std::map<std::string, std::string>::const_iterator it = req->getHeaderFields().find("Expected");
+	if (it != req->getHeaderFields().end() && it->second == "100-continue")
+	{
+		//@todo check size requirements
+		setError(HTTP_EXPECTATION_FAILED, config);
+		return;
+	}
 	if (!loc->getRet().empty())
 	{
 		insertHeader("Location", loc->getRet());
