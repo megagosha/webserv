@@ -58,10 +58,10 @@ public:
 	HttpRequest &operator=(const HttpRequest &rhs);
 
 	//reserve field memory
-	HttpRequest(std::string &request, const std::string& client_ip);
+	HttpRequest(std::string &request, const std::string& client_ip, unsigned  long bytes);
 
-    void parseChunked(const std::string &request, unsigned long i);
-    void appendBody(std::string &buff);
+    void parseChunked(const std::string &request, unsigned long i, long bytes);
+    void appendBody(std::string &buff, long bytes);
 	const std::string &getMethod() const;
 
 	const std::string &getRequestUri() const;

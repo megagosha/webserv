@@ -44,7 +44,7 @@ void HttpRequest::parse_request_uri(void) {
 }
 
 //reserve field memory
-HttpRequest::HttpRequest(std::string &request, const std::string &client_ip) : _client_ip(client_ip) {
+HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes) : _client_ip(client_ip) {
     _chunked = false;
     _ready = false;
     _content_length = 0;
@@ -66,7 +66,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip) : _
     std::string field_name;
     std::string value;
     int num_fields = 0;
-    while (rdt.second < request.length() && request.find("\r\n\r\n", rdt.second) != rdt.second) {
+    while (rdt.second < bytes && request.find("\r\n\r\n", rdt.second) != rdt.second) {
         if (num_fields > MAX_FIELDS) {
             _parsing_error = HttpResponse::HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE;
             return;
@@ -136,24 +136,40 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip) : _
         return;
     }
     if (_chunked) {
-        parseChunked(request, rdt.second);
+        parseChunked(request, rdt.second, (long) bytes); //@todo types fix
+        return;
     } else {
-        _body += request.
-                substr(rdt
-                               .second, rdt.second + _content_length);
+        _body += request.substr(rdt.second, rdt.second + _content_length);
         if (_body.size() == _content_length)
             _ready = true;
+        else
+        {
+            std::cout << "Should continue" << std::endl;
+        }
     }
 }
 
-void HttpRequest::parseChunked(const std::string &request, unsigned long pos) {
+void HttpRequest::appendBody(std::string &buff, long bytes) {
+    if (_chunked)
+        parseChunked(buff, 0, bytes);
+    else
+    {
+        _body += buff.substr(0, _body.size() - _content_length);
+        if (_body.size() == _content_length){
+            _ready = true;
+            return;
+        }
+    }
+}
+
+void HttpRequest::parseChunked(const std::string &request, unsigned long pos, long bytes) {
     std::string unchunked;
     unchunked.reserve(request.size() - pos);
     std::string::size_type i = pos;
     std::string size;
     unsigned long ch_size;
     std::string chunk;
-    std::string::size_type max_sz = request.size();
+    std::string::size_type max_sz = bytes;
     while (i < max_sz) {
         while (i < max_sz && std::isxdigit(request[i])) {
             size += request[i];

@@ -161,7 +161,10 @@ void Session::parseRequest(long bytes)
 {
 	std::string res(bytes, 0);
 	Utils::recv(bytes, _fd, res);
-	_request = HttpRequest(res, Utils::ClientIpFromSock(&_s_addr));
+    if (_request.getMethod().empty())
+	    _request = HttpRequest(res, Utils::ClientIpFromSock(&_s_addr));
+    else
+        _request.appendBody(res, bytes);
 }
 
 void Session::prepareResponse()
