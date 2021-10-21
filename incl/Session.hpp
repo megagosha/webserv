@@ -15,97 +15,89 @@
 #include "Socket.hpp"
 
 class HttpResponse;
-
+class HttpRequest;
 class Socket;
 
-class Session
-{
+class Session {
 private:
-	int             _fd;
-	Socket          *_server_socket;
-	HttpResponse    *_response;
-	HttpRequest     _request;
-	struct sockaddr _s_addr;
-	bool            _keep_alive;
-	bool            _response_sent;
-	time_t          _connection_timeout;    //time to live (if no updates from client received in this timeframe close connection
-	time_t          _receive_timeout;  //if keep_alive false and not request has been made receive_timeout expired close connection; send request timeout
-	time_t          _last_update; //server should send response in this timeframe
-	enum
-	{
-		HTTP_DEFAULT_TIMEOUT            = 60000000,
-		HTTP_DEFAULT_CONNECTION_TIMEOUT = 30000000
-	};
+    int _fd;
+    Socket *_server_socket;
+    HttpResponse *_response;
+    HttpRequest *_request;
+    struct sockaddr _s_addr;
+    bool _keep_alive;
+    bool _response_sent;
+    time_t _connection_timeout;    //how long to live before initial http request (20 seconds by default);
+    time_t _last_response_sent;  //keep connection open after last response
+    enum {
+        HTTP_DEFAULT_TIMEOUT = 60000000,
+        HTTP_DEFAULT_CONNECTION_TIMEOUT = 30000000
+    };
 
 public:
-	int getFd() const;
+    int getFd() const;
 
-	void setFd(int fd);
+    void setFd(int fd);
 
-	Socket *getServerSocket() const;
+    Socket *getServerSocket() const;
 
-	void setServerSocket(Socket *serverSocket);
+    void setServerSocket(Socket *serverSocket);
 
-	const HttpResponse *getResponse() const;
+    const HttpResponse *getResponse() const;
 
-	void setResponse(const HttpResponse *response);
+    void setResponse(const HttpResponse *response);
 
-	const HttpRequest &getRequest() const;
+    const HttpRequest *getRequest() const;
 
-	void setRequest(const HttpRequest &request);
+    void setRequest(HttpRequest *request);
 
-	bool isKeepAlive() const;
+    bool isKeepAlive() const;
 
-	void setKeepAlive(bool keepAlive);
+    void setKeepAlive(bool keepAlive);
 
-	bool isResponseSent() const;
+    bool isResponseSent() const;
 
-	void setResponseSent(bool responseSent);
+    void setResponseSent(bool responseSent);
 
-	time_t getConnectionTimeout() const;
+    time_t getConnectionTimeout() const;
 
-	void setConnectionTimeout(time_t connectionTimeout);
+    void setConnectionTimeout();
 
-	time_t getReceiveTimeout() const;
+    time_t getLastResposnseSent() const;
 
-	void setReceiveTimeout(time_t receiveTimeout);
+    void setLastUpdate();
 
-	time_t getLastUpdate() const;
+    Session();
 
-	void setLastUpdate(time_t lastUpdate);
+    Session(const Session &rhs);
 
-	Session();
+    Session &operator=(const Session &rhs);
 
-	Session(const Session &rhs);
+    Session(Socket *sock);
 
-	Session &operator=(const Session &rhs);
+    Session(int i, Socket *pSocket, sockaddr sockaddr1);
 
-	Session(Socket *sock);
+    void parseRequest(long bytes);
 
-	Session(int i, Socket *pSocket, sockaddr sockaddr1);
+    void prepareResponse();
 
-	void parseRequest(long bytes);
+    ~Session();
 
-	void prepareResponse();
+    void end(void);
 
-	~Session();
+    class SessionException : public std::exception {
+        const std::string m_msg;
+    public:
+        SessionException(const std::string &msg);
 
-	void end(void);
+        ~SessionException() throw();
 
-	class SessionException : public std::exception
-	{
-		const std::string m_msg;
-	public:
-		SessionException(const std::string &msg);
+        const char *what() const throw();
+    };
 
-		~SessionException() throw();
+    void send();
 
-		const char *what() const throw();
-	};
-
-	void send();
-
-	bool ifEnd(void);
+    bool shouldClose(void);
 };
 
 #endif //WEBSERV_SESSION_HPP

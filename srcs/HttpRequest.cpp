@@ -15,7 +15,18 @@ std::string &leftTrim(std::string &str, std::string chars) {
 }
 
 
-HttpRequest::HttpRequest() : _ready(false) {};
+HttpRequest::HttpRequest() : _method(),
+                             _request_uri(),
+                             _query_string(),
+                             _normalized_path(),
+                             _http_v("HTTP/1.1"),
+                             _chunked(false),
+                             _header_fields(),
+                             _body(),
+                             _client_ip(),
+                             _content_length(0),
+                             _ready(false),
+                             _parsing_error(0) {};
 
 std::pair<bool, std::size_t>
 parse(std::string &src, std::size_t token_start, const std::string &token_delim, bool delim_exact, std::size_t max_len,
@@ -44,7 +55,8 @@ void HttpRequest::parse_request_uri(void) {
 }
 
 //reserve field memory
-HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes) : _client_ip(client_ip) {
+HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes) : _client_ip(
+        client_ip) {
     _chunked = false;
     _ready = false;
     _content_length = 0;
@@ -100,12 +112,12 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         // 		}
         // 		else if (ch != EOF)
         // 			throw std::exception();
-        // 	}
-        _header_fields.insert(std::make_pair(field_name, value));
+        // 	} e_pair(field_name, value));
         ++num_fields;
     }
+    std::map<std::string, std::string>::iterator it;
     std::cout << "Message _body" << std::endl;
-    std::map<std::string, std::string>::iterator it = _header_fields.find("Transfer-Encoding");
+    it = _header_fields.find("Transfer-Encoding");
     parse_request_uri();
     if (it == _header_fields.end()) {
 
@@ -135,6 +147,12 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _ready = true;
         return;
     }
+    it = _header_fields.find("Expected");
+    if (it != _header_fields.end()) {
+        _parsing_error = HttpResponse::HTTP_CONTINUE;
+        return;
+    }
+
     if (_chunked) {
         parseChunked(request, rdt.second, (long) bytes); //@todo types fix
         return;
@@ -142,8 +160,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _body += request.substr(rdt.second, rdt.second + _content_length);
         if (_body.size() == _content_length)
             _ready = true;
-        else
-        {
+        else {
             std::cout << "Should continue" << std::endl;
         }
     }
@@ -152,10 +169,9 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
 void HttpRequest::appendBody(std::string &buff, long bytes) {
     if (_chunked)
         parseChunked(buff, 0, bytes);
-    else
-    {
+    else {
         _body += buff.substr(0, _body.size() - _content_length);
-        if (_body.size() == _content_length){
+        if (_body.size() == _content_length) {
             _ready = true;
             return;
         }
@@ -185,7 +201,7 @@ void HttpRequest::parseChunked(const std::string &request, unsigned long pos, lo
         i += 2; // skip \r\n
         if (size.empty()) {
             _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-            return ;
+            return;
         }
         ch_size = strtoul(size.data(), nullptr, 16);
         if (ch_size == 0) {
@@ -286,4 +302,20 @@ const std::string &HttpRequest::getNormalizedPath() const {
 
 const std::string &HttpRequest::getClientIp() const {
     return _client_ip;
+}
+
+bool HttpRequest::isReady() const {
+    return _ready;
+}
+
+void HttpRequest::setReady(bool ready) {
+    _ready = ready;
+}
+
+uint16_t HttpRequest::getParsingError() const {
+    return _parsing_error;
+}
+
+void HttpRequest::setParsingError(uint16_t parsingError) {
+    _parsing_error = parsingError;
 }

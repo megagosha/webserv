@@ -110,7 +110,7 @@ std::pair<int, Session *> Socket::acceptConnection()
 	if (new_fd < 0)
 		throw SocketException("Failed to open connection");
 	res = _sessions.insert(std::make_pair(new_fd, Session(new_fd, this, s_addr)));
-	return (std::make_pair(new_fd, &((res.first)->second)));
+    return (std::make_pair(new_fd, &((res.first)->second)));
 }
 
 

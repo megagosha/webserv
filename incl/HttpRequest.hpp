@@ -24,7 +24,8 @@ enum Limits
 	MAX_V = 8,
 	MAX_FIELDS = 30,
 	MAX_NAME = 100,
-	MAX_VALUE = 1000
+	MAX_VALUE = 1000,
+    KEEP_ALIVE_SEC = 5
 };
 
 std::string &leftTrim(std::string &str, std::string chars);
@@ -43,7 +44,16 @@ private:
     std::string                         _client_ip;
     unsigned long                        _content_length;
     bool                                _ready;
-    HttpResponse::HTTPStatus            _parsing_error;
+    uint16_t                            _parsing_error;
+public:
+    bool isReady() const;
+
+    void setReady(bool ready);
+
+    uint16_t    getParsingError() const;
+
+    void setParsingError(uint16_t parsingError);
+
 public:
     const std::string &getClientIp() const;
 
