@@ -60,6 +60,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     _chunked = false;
     _ready = false;
     _content_length = 0;
+    _parsing_error = 0;
     std::pair<bool, std::size_t> rdt;
     if (!(rdt = parse(request, 0, " ", true, MAX_METHOD, _method)).first) {
         _parsing_error = HttpResponse::HTTP_METHOD_NOT_ALLOWED;
@@ -113,6 +114,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         // 		else if (ch != EOF)
         // 			throw std::exception();
         // 	} e_pair(field_name, value));
+        _header_fields.insert(std::make_pair(field_name, value));
         ++num_fields;
     }
     std::map<std::string, std::string>::iterator it;
@@ -121,7 +123,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     parse_request_uri();
     if (it == _header_fields.end()) {
 
-        it = _header_fields.find("Content-length");
+        it = _header_fields.find("Content-Length");
         if (it != _header_fields.end()) {
             if (it->second.size() > 10) {
                 _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
@@ -131,7 +133,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
                     _parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
                 }
             }
-        } else if (_method == "POST")
+        } else if (_method == "POST" && _header_fields.find("Content-Length") == _header_fields.end() && !isChunked())
             _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
         _chunked = false;
     } else if (it->second.find("chunked") != std::string::npos)
@@ -142,13 +144,14 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _ready = true;
         return;
     }
-    if (!_chunked && _content_length == 0) {
-        _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
+    if (!_chunked && _content_length == 0 && _method == "POST") {
+        _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
         _ready = true;
         return;
     }
-    it = _header_fields.find("Expected");
+    it = _header_fields.find("Expect");
     if (it != _header_fields.end()) {
+        std::cout << "found expect" << std::endl;
         _parsing_error = HttpResponse::HTTP_CONTINUE;
         return;
     }
@@ -156,25 +159,33 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     if (_chunked) {
         parseChunked(request, rdt.second, (long) bytes); //@todo types fix
         return;
-    } else {
-        _body += request.substr(rdt.second, rdt.second + _content_length);
+    } else if (request.find("\r\n\r\n", rdt.second) == rdt.second) {
+        _body += request.substr(rdt.second + 4, rdt.second + _content_length);
+        std::cout << "parsed " << "size: " << _body.size() << std::endl;
+        std::cout << "body content: " << _body << std::endl;
         if (_body.size() == _content_length)
             _ready = true;
         else {
             std::cout << "Should continue" << std::endl;
+            return;
         }
     }
+    else
+        _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
 }
 
 void HttpRequest::appendBody(std::string &buff, long bytes) {
+    std::cout << "body appended " << std::endl;
     if (_chunked)
         parseChunked(buff, 0, bytes);
     else {
         _body += buff.substr(0, _body.size() - _content_length);
         if (_body.size() == _content_length) {
+            std::cout << "ready to send in appendBody" << std::endl;
             _ready = true;
             return;
         }
+        std::cout << "body is not ready" << std::endl;
     }
 }
 

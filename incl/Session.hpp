@@ -41,6 +41,8 @@ public:
 
     Socket *getServerSocket() const;
 
+    std::string getIpFromSock();
+
     void setServerSocket(Socket *serverSocket);
 
     const HttpResponse *getResponse() const;

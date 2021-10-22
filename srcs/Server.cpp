@@ -139,10 +139,12 @@ void Server::processResponse(std::pair<int, struct kevent *> &updates) {
             cur_fd = updates.second[i].ident;
             if (_pending_sessions.find(cur_fd) != _pending_sessions.end()) {
                 it = _sessions.find(cur_fd);
+                std::cout << "keep alive " << it->second->isKeepAlive() << std::endl;
                 it->second->send();
-                _pending_sessions.erase(cur_fd);
                 if (it->second->shouldClose())
                     closeConnection(cur_fd);
+                _pending_sessions.erase(cur_fd);
+
             } else {
                 std::map<int, Session *>::iterator c_it;
                 c_it = _sessions.find(cur_fd);

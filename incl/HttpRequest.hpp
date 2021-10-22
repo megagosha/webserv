@@ -68,7 +68,7 @@ public:
 	HttpRequest &operator=(const HttpRequest &rhs);
 
 	//reserve field memory
-	HttpRequest(std::string &request, const std::string& client_ip, unsigned  long bytes);
+	    HttpRequest(std::string &request, const std::string& client_ip, unsigned  long bytes);
 
     void parseChunked(const std::string &request, unsigned long i, long bytes);
     void appendBody(std::string &buff, long bytes);

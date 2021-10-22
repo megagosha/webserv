@@ -78,7 +78,8 @@ void Session::setResponse(const HttpResponse *response) {
 
     if (response == nullptr) {
 //		delete _response; @todo fix memory err
-        _response = nullptr;return;
+        _response = nullptr;
+        return;
     }
     _response = new HttpResponse(*response);
 }
@@ -122,13 +123,19 @@ void Session::setConnectionTimeout() {
     time(&_connection_timeout);
 }
 
+std::string Session::getIpFromSock() {
+    return (Utils::ClientIpFromSock(&_s_addr));
+}
+
 void Session::parseRequest(long bytes) {
     std::string res(bytes, 0);
     Utils::recv(bytes, _fd, res);
     if (_request == nullptr)
-        _request = new HttpRequest(res, Utils::ClientIpFromSock(&_s_addr), bytes);
+        _request = new HttpRequest(res, getIpFromSock(), bytes);
     else
         _request->appendBody(res, bytes);
+    std::cout << "pased request size " << _request->getBody().size();
+    std::cout << "chunked " << _request->isChunked() << std::endl;
     std::map<std::string, std::string>::const_iterator it;
     it = _request->getHeaderFields().find("Connection");
     if (it != _request->getHeaderFields().end() && it->second == "keep-alive")
@@ -166,28 +173,34 @@ void Session::prepareResponse() {
 }
 
 bool Session::shouldClose() {
-    if (!isKeepAlive()) {
-        end();
+
+    if (!isKeepAlive())
         return (true);
-    } else {
-        time_t cur_time;
-        std::time(&cur_time);
-        if (std::difftime(_last_response_sent, cur_time) > 5) {
-            return (true);
-        }
+    time_t cur_time;
+    std::time(&cur_time);
+    if (std::difftime(cur_time, _last_response_sent) > 5) {
+        return (true);
     }
     return (false);
 }
 
 void Session::end() {
+    std::cout << "Session closed" << std::endl;
     close(_fd);
     _server_socket->removeSession(_fd);
 }
 
 void Session::send() {
     _response->sendResponse(_fd, _request);
-    if (!isKeepAlive())
-        end();
+    time(&_last_response_sent);
+    if (_response != nullptr) {
+        delete _response;
+        _response = nullptr;
+    }
+    if (_request != nullptr) {
+        delete _request;
+        _request = nullptr;
+    }
 }
 
 time_t Session::getLastResposnseSent() const {
