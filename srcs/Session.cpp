@@ -6,16 +6,13 @@
 
 Session::Session()
         : _fd(), _server_socket(), _response(nullptr), _request(nullptr), _s_addr(), _keep_alive(false),
-          _response_sent(),
-          _connection_timeout(),
-          _last_response_sent() {
+          _status(UNUSED) {
 }
 
 Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _s_addr(),
                                        _keep_alive(rhs._keep_alive),
-                                       _response_sent(rhs._response_sent),
-                                       _connection_timeout(rhs._connection_timeout),
-                                       _last_response_sent(rhs._last_response_sent) {
+                                       _status(rhs._status),
+                                       _connection_timeout(rhs._connection_timeout) {
     setResponse(rhs._response);
     setRequest(rhs._request);
 }
@@ -23,27 +20,20 @@ Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_
 Session &Session::operator=(const Session &rhs) {
     if (this == &rhs)
         return (*this);
-    _fd = rhs._fd;
-    _server_socket = rhs._server_socket;
-    _keep_alive = rhs._keep_alive;
-    _response_sent = rhs._response_sent;
+    _fd                 = rhs._fd;
+    _server_socket      = rhs._server_socket;
+    _keep_alive         = rhs._keep_alive;
+    _status             = rhs._status;
     _connection_timeout = rhs._connection_timeout;
-    _last_response_sent = rhs._last_response_sent;
     setResponse(rhs._response);
     setRequest(rhs._request);
     return (*this);
 }
 
-Session::Session(Socket *sock)
-        : _fd(), _server_socket(sock), _response(nullptr), _s_addr(), _keep_alive(), _response_sent(),
-          _connection_timeout(),
-          _last_response_sent() {
-}
-
 Session::Session(int socket_fd, Socket *server_socket, sockaddr addr) :
         _fd(socket_fd), _server_socket(server_socket), _response(nullptr), _request(nullptr), _s_addr(addr),
         _keep_alive(false),
-        _response_sent(), _connection_timeout(), _last_response_sent(0) {
+        _status(UNUSED), _connection_timeout() {
     std::time(&_connection_timeout);
 }
 
@@ -84,7 +74,7 @@ void Session::setResponse(const HttpResponse *response) {
     _response = new HttpResponse(*response);
 }
 
-const HttpRequest *Session::getRequest() const {
+HttpRequest *Session::getRequest() const {
     return _request;
 }
 
@@ -107,14 +97,6 @@ void Session::setKeepAlive(bool keepAlive) {
     _keep_alive = keepAlive;
 }
 
-bool Session::isResponseSent() const {
-    return _response_sent;
-}
-
-void Session::setResponseSent(bool responseSent) {
-    _response_sent = responseSent;
-}
-
 time_t Session::getConnectionTimeout() const {
     return _connection_timeout;
 }
@@ -130,14 +112,15 @@ std::string Session::getIpFromSock() {
 void Session::parseRequest(long bytes) {
     std::string res(bytes, 0);
     Utils::recv(bytes, _fd, res);
-    if (_request == nullptr)
+    if (_request == nullptr) {
         _request = new HttpRequest(res, getIpFromSock(), bytes);
+    }
     else
         _request->appendBody(res, bytes);
-    std::cout << "pased request size " << _request->getBody().size();
+    std::cout << "parsed request size " << _request->getBody().size() << std::endl;
     std::cout << "chunked " << _request->isChunked() << std::endl;
     std::map<std::string, std::string>::const_iterator it;
-    it = _request->getHeaderFields().find("Connection");
+    it              = _request->getHeaderFields().find("Connection");
     if (it != _request->getHeaderFields().end() && it->second == "keep-alive")
         _keep_alive = true;
     else
@@ -145,10 +128,11 @@ void Session::parseRequest(long bytes) {
 }
 
 void Session::prepareResponse() {
-    std::string path;
+    std::string   path;
     VirtualServer *config = _server_socket->getServerByHostHeader(
             _request->getHeaderFields());
     _response = new HttpResponse(*this, config);
+    _status   = READY_TO_SEND;
 //	if (config == nullptr)
 //	{
 //		_response = HttpResponse(400, *config);
@@ -174,11 +158,12 @@ void Session::prepareResponse() {
 
 bool Session::shouldClose() {
 
-    if (!isKeepAlive())
+    if (!isKeepAlive() && _status == AWAIT_NEW_REQ)
         return (true);
     time_t cur_time;
     std::time(&cur_time);
-    if (std::difftime(cur_time, _last_response_sent) > 5) {
+    if (std::difftime(cur_time, _connection_timeout) > HTTP_DEFAULT_TIMEOUT) {
+        _status = TIMEOUT;
         return (true);
     }
     return (false);
@@ -186,13 +171,18 @@ bool Session::shouldClose() {
 
 void Session::end() {
     std::cout << "Session closed" << std::endl;
+    if (_status == TIMEOUT) {
+        _response = new HttpResponse(HttpResponse::HTTP_REQUEST_TIMEOUT, _server_socket->getDefaultConfig());
+        _response->sendResponse(_fd, nullptr);
+    }
     close(_fd);
     _server_socket->removeSession(_fd);
 }
 
 void Session::send() {
     _response->sendResponse(_fd, _request);
-    time(&_last_response_sent);
+    _status = AWAIT_NEW_REQ;
+    time(&_connection_timeout);
     if (_response != nullptr) {
         delete _response;
         _response = nullptr;
@@ -203,11 +193,11 @@ void Session::send() {
     }
 }
 
-time_t Session::getLastResposnseSent() const {
-    return (_last_response_sent);
+short Session::getStatus() const {
+    return _status;
 }
 
-void Session::setLastUpdate() {
-    std::time(&_last_response_sent);
+void Session::setStatus(short status) {
+    _status = status;
 }
 

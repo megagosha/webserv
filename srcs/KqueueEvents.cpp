@@ -110,7 +110,7 @@ std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout)
 	struct timespec tmout = {tout,     /* block for 5 seconds at most */
 							 0};
 //	std::cout << "kq max size " << _max_size << std::endl;
-std::cout << ".";
+//std::cout << ".";
 	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);
 	return (std::make_pair(res, _res_event));
 }

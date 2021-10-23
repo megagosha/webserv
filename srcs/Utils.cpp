@@ -55,7 +55,7 @@ std::list<std::string> Utils::strTokenizer(const std::string &s, char c) {
         }
         res.push_back(*it);
     }
-    if (*s.rend() != '/')
+    if (*s.rbegin() != '/')
         tokens.push_back(res);
     return (tokens);
 }
@@ -90,7 +90,7 @@ std::string &Utils::normalizePath(std::string &s) {
     s.clear();
     for (std::list<std::string>::iterator rit = tokens.begin(); rit != tokens.end(); ++rit) {
         if (*rit == "/") {
-            if (*(++rit) == "/") {
+            if (++rit != tokens.end() && *(rit) == "/") {
                 s.clear();
                 return (s);
             } else

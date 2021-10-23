@@ -51,6 +51,7 @@ parse(std::string &src, std::size_t token_start, const std::string &token_delim,
 void HttpRequest::parse_request_uri(void) {
     _query_string = Utils::getExt(_request_uri, '?');
     std::string no_query = Utils::getWithoutExt(_request_uri, '?');
+    std::cout << _request_uri << std::endl;
     _normalized_path = Utils::normalizePath(no_query);
 }
 
@@ -176,6 +177,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
 
 void HttpRequest::appendBody(std::string &buff, long bytes) {
     std::cout << "body appended " << std::endl;
+    _parsing_error = 0;
     if (_chunked)
         parseChunked(buff, 0, bytes);
     else {
@@ -327,6 +329,12 @@ uint16_t HttpRequest::getParsingError() const {
     return _parsing_error;
 }
 
-void HttpRequest::setParsingError(uint16_t parsingError) {
-    _parsing_error = parsingError;
+void HttpRequest::sendContinue(int fd) {
+    _parsing_error = 0;
+    send(fd, "HTTP/1.1 100 Continue\r\n\r\n", 27, 0);
 }
+
+unsigned long HttpRequest::getContentLength() const {
+    return _content_length;
+}
+

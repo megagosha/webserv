@@ -15,26 +15,35 @@
 #include "Socket.hpp"
 
 class HttpResponse;
+
 class HttpRequest;
+
 class Socket;
 
 class Session {
 private:
-    int _fd;
-    Socket *_server_socket;
-    HttpResponse *_response;
-    HttpRequest *_request;
-    struct sockaddr _s_addr;
-    bool _keep_alive;
-    bool _response_sent;
-    time_t _connection_timeout;    //how long to live before initial http request (20 seconds by default);
-    time_t _last_response_sent;  //keep connection open after last response
-    enum {
-        HTTP_DEFAULT_TIMEOUT = 60000000,
-        HTTP_DEFAULT_CONNECTION_TIMEOUT = 30000000
+    int              _fd;
+    Socket           *_server_socket;
+    HttpResponse     *_response;
+    HttpRequest      *_request;
+    struct sockaddr  _s_addr;
+    bool             _keep_alive;
+    short            _status;
+    time_t           _connection_timeout;    //how long to live before initial http request (20 seconds by default);
+    static const int HTTP_DEFAULT_TIMEOUT = 5;
+    enum Status {
+        UNUSED        = 1, // if keep_alive false -> do not close
+        AWAIT_NEW_REQ = 2, // if keep alive true close
+        READY_TO_SEND = 3, // response ready -> send
+        TIMEOUT       = 4, //should be closed with timeout;
     };
 
 public:
+
+    short getStatus() const;
+
+    void setStatus(short status);
+
     int getFd() const;
 
     void setFd(int fd);
@@ -49,7 +58,7 @@ public:
 
     void setResponse(const HttpResponse *response);
 
-    const HttpRequest *getRequest() const;
+    HttpRequest *getRequest() const;
 
     void setRequest(HttpRequest *request);
 
@@ -57,25 +66,15 @@ public:
 
     void setKeepAlive(bool keepAlive);
 
-    bool isResponseSent() const;
-
-    void setResponseSent(bool responseSent);
-
     time_t getConnectionTimeout() const;
 
     void setConnectionTimeout();
-
-    time_t getLastResposnseSent() const;
-
-    void setLastUpdate();
 
     Session();
 
     Session(const Session &rhs);
 
     Session &operator=(const Session &rhs);
-
-    Session(Socket *sock);
 
     Session(int i, Socket *pSocket, sockaddr sockaddr1);
 

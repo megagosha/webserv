@@ -441,7 +441,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 	std::vector<char> headers_vec;
 	HTTPStatus res = HTTP_OK;
 
-	if (!_cgi_path.empty())
+	if (!_cgi_path.empty() && req != nullptr)
 	{
 		res = executeCgi(req);
 		setResponseString("HTTP/1.1", std::to_string(res), getReasonForStatus(res));
@@ -472,9 +472,9 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 		headers_vec.push_back('\n');
 	}
 
-	write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
-	if (_body_size > 0)
-		write(STDOUT_FILENO, _body.data(), _body.size());
+//	write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
+//	if (_body_size > 0)
+//		write(STDOUT_FILENO, _body.data(), _body.size());
 	send(fd, headers_vec.data(), headers_vec.size(), 0);
 	if (_body_size > 0)
 		send(fd, _body.data(), _body.size(), 0);
