@@ -26,6 +26,7 @@ HttpRequest::HttpRequest() : _method(),
                              _client_ip(),
                              _content_length(0),
                              _ready(false),
+                             _max_body_size(MAX_DEFAULT_BODY_SIZE),
                              _parsing_error(0) {};
 
 std::pair<bool, std::size_t>
@@ -56,8 +57,10 @@ void HttpRequest::parse_request_uri(void) {
 }
 
 //reserve field memory
-HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes) : _client_ip(
+HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes, Socket *sock) : _client_ip(
         client_ip) {
+	if (sock == nullptr)
+		_chunked = false;
     _chunked = false;
     _ready = false;
     _content_length = 0;
@@ -92,29 +95,6 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
             _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
             return;
         }
-        // rdt.second += 2;
-        // while (rdt.second < request.length() && request[rdt.second] == ' ' || request[rdt.second] == '\t')
-        // 	while (ch == ' ' || ch == '\t')
-        // 	{
-        // 		while (i < end && ch != '\r' && ch != '\n' && value.length() < MAX_VALUE)
-        // 		{
-        // 			value += ch;
-        // 			++i;
-        // 			ch = request[i];
-        // 		}
-        // 		if (ch == '\r' && i < end)
-        // 		{
-        // 			++i;
-        // 			ch = request[i];
-        // 		}
-        // 		if (ch == '\n' && i < end)
-        // 		{
-        // 			++i;
-        // 			ch = request[i];
-        // 		}
-        // 		else if (ch != EOF)
-        // 			throw std::exception();
-        // 	} e_pair(field_name, value));
         _header_fields.insert(std::make_pair(field_name, value));
         ++num_fields;
     }
@@ -126,28 +106,22 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
 
         it = _header_fields.find("Content-Length");
         if (it != _header_fields.end()) {
-            if (it->second.size() > 10) {
-                _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-            } else {
+
                 _content_length = std::strtoul(it->second.data(), nullptr, 10);
                 if (errno == ERANGE) {
                     _parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
                 }
-            }
+
         } else if (_method == "POST" && _header_fields.find("Content-Length") == _header_fields.end() && !isChunked())
             _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
         _chunked = false;
     } else if (it->second.find("chunked") != std::string::npos)
         _chunked = true;
-    else
-        _chunked = false;
     if (_parsing_error != 0) {
-        _ready = true;
         return;
     }
     if (!_chunked && _content_length == 0 && _method == "POST") {
         _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
-        _ready = true;
         return;
     }
     it = _header_fields.find("Expect");
@@ -156,11 +130,31 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _parsing_error = HttpResponse::HTTP_CONTINUE;
         return;
     }
+    	unsigned long max_body_size;
+    	it = _header_fields.find("Host");
+    	VirtualServer *serv = sock->getServerByHostHeader(_header_fields);
+    	if (serv == nullptr)
+    	{
+    		_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
+    		_ready = true;
+    		return;
+    	}
+    	if (serv->getBodySizeLimit() != 0)
+    		_max_body_size = MAX_DEFAULT_BODY_SIZE;
+    	else
+    		max_body_size = serv->getBodySizeLimit();
+
 
     if (_chunked) {
         parseChunked(request, rdt.second, (long) bytes); //@todo types fix
         return;
     } else if (request.find("\r\n\r\n", rdt.second) == rdt.second) {
+    	if (_content_length - rdt.second > max_body_size)
+    	{
+    		_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
+    		_ready = true;
+    		return;
+    	}
         _body += request.substr(rdt.second + 4, rdt.second + _content_length);
         std::cout << "parsed " << "size: " << _body.size() << std::endl;
         std::cout << "body content: " << _body << std::endl;
@@ -229,10 +223,15 @@ void HttpRequest::parseChunked(const std::string &request, unsigned long pos, lo
                 return;
             }
         }
+        if (_body.size() + ch_size > _max_body_size)
+        {
+        	_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
+        	return;
+        }
         std::cout << "SIZE " << ch_size << std::endl;
         std::cout << "ch " << request[i] << std::endl;
         while (i < max_sz && ch_size > 0) {
-            chunk += request[i];
+        	_body += request[i];
             ++i;
             --ch_size;
         }
@@ -240,10 +239,10 @@ void HttpRequest::parseChunked(const std::string &request, unsigned long pos, lo
             _parsing_error = HttpResponse::HTTP_BAD_REQUEST;
             return;
         }
-        _body += chunk;
+//        _body += chunk;
         ++i;
         ++i;
-        chunk.clear();
+//        chunk.clear();
         size.clear();
         std::cout << std::endl;
     }
@@ -287,7 +286,10 @@ HttpRequest::HttpRequest(const HttpRequest &rhs) : _method(rhs._method),
                                                    _header_fields(rhs._header_fields),
                                                    _body(rhs._body),
                                                    _client_ip(rhs._client_ip),
-                                                   _ready(rhs._ready) {};
+                                                   _content_length(rhs._content_length),
+                                                   _ready(rhs._ready),
+                                                   _max_body_size(rhs._max_body_size),
+                                                   _parsing_error(rhs._parsing_error){};
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &rhs) {
     if (this == &rhs)
@@ -301,7 +303,10 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &rhs) {
     _header_fields = rhs._header_fields;
     _body = rhs._body;
     _client_ip = rhs._client_ip;
+    _content_length = rhs._content_length;
     _ready = rhs._ready;
+    _max_body_size = rhs._max_body_size;
+    _parsing_error = rhs._parsing_error;
     return (*this);
 }
 
@@ -318,6 +323,8 @@ const std::string &HttpRequest::getClientIp() const {
 }
 
 bool HttpRequest::isReady() const {
+	if (_parsing_error != 0)
+		return (true);
     return _ready;
 }
 
@@ -336,5 +343,10 @@ void HttpRequest::sendContinue(int fd) {
 
 unsigned long HttpRequest::getContentLength() const {
     return _content_length;
+}
+
+void HttpRequest::setParsingError(uint16_t parsingError)
+{
+	_parsing_error = parsingError;
 }
 

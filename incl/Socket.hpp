@@ -48,7 +48,6 @@ private:
 	Socket();
 
 public:
-
 	Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv);
 
 	Socket(const Socket &);

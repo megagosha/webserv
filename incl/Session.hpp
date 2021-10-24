@@ -29,7 +29,7 @@ private:
     struct sockaddr  _s_addr;
     bool             _keep_alive;
     short            _status;
-    time_t           _connection_timeout;    //how long to live before initial http request (20 seconds by default);
+    time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
     static const int HTTP_DEFAULT_TIMEOUT = 5;
     enum Status {
         UNUSED        = 1, // if keep_alive false -> do not close

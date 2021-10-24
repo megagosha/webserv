@@ -28,14 +28,19 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server)
  */
 HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 {
-	const Location *loc;
+	const Location    *loc;
 	const HttpRequest *req = session.getRequest();
-	std::string path;
+	std::string       path;
 
 
 	if (config == nullptr)
 	{
 		setError(HTTP_BAD_REQUEST, config);
+		return;
+	}
+	if (session.getRequest()->getParsingError() != 0)
+	{
+		setError((HTTPStatus)session.getRequest()->getParsingError(), config);
 		return;
 	}
 	loc = config->getLocationFromRequest(*req);
@@ -60,7 +65,8 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 	if (!loc->getRet().empty())
 	{
 		insertHeader("Location", loc->getRet());
-		setResponseString("HTTP/1.1", std::to_string(HTTP_MOVED_PERMANENTLY), getReasonForStatus(HTTP_MOVED_PERMANENTLY));
+		setResponseString("HTTP/1.1", std::to_string(HTTP_MOVED_PERMANENTLY),
+						  getReasonForStatus(HTTP_MOVED_PERMANENTLY));
 		return;
 	}
 	if (!loc->getCgiPass().empty())
@@ -93,15 +99,15 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs)
 {
 	if (this == &rhs)
 		return (*this);
-	_proto = rhs.getProto();
-	_status_code = rhs.getStatusCode();
-	_status_reason = rhs.getStatusReason();
+	_proto           = rhs.getProto();
+	_status_code     = rhs.getStatusCode();
+	_status_reason   = rhs.getStatusReason();
 	_response_string = rhs.getResponseString();
-	_header = rhs.getHeader();
-	_body = rhs.getBody();
-	_body_size = rhs.getBodySize();
-	_cgi_env = rhs._cgi_env;
-	_cgi_path = rhs._cgi_path;
+	_header          = rhs.getHeader();
+	_body            = rhs.getBody();
+	_body_size       = rhs.getBodySize();
+	_cgi_env         = rhs._cgi_env;
+	_cgi_path        = rhs._cgi_path;
 	return (*this);
 }
 
@@ -138,7 +144,11 @@ HttpResponse::processPostRequest(Session &session,
 								 const VirtualServer *serv,
 								 const Location *loc, std::string &path)
 {
-	const HttpRequest *req = session.getRequest();
+	const HttpRequest                                  *req = session.getRequest();
+	std::string                                        extension;
+	std::map<std::string, std::string>::const_iterator it;
+	int                                                num_files;
+
 	if (Utils::isDirectory(path))
 	{
 		if (!loc->getIndex().empty())
@@ -146,9 +156,12 @@ HttpResponse::processPostRequest(Session &session,
 	}
 	if (loc->isFileUploadOn())
 	{
-
-		int num_files = Utils::countFilesInFolder(loc->getFileUploadPath());
-		std::ofstream rf("uploaded_file" + std::to_string(num_files + 1), std::ios::out | std::ios::binary);
+		it            = req->getHeaderFields().find("Content-Type");
+		if (it != req->getHeaderFields().end())
+			extension = MimeType::getFileExtension(it->second);
+		num_files     = Utils::countFilesInFolder(loc->getFileUploadPath());
+		std::ofstream rf(loc->getFileUploadPath() + "uploaded_file" + std::to_string(num_files + 1) + "." + extension,
+						 std::ios::out | std::ios::binary);
 		if (!rf)
 		{
 			setError(HTTP_INTERNAL_SERVER_ERROR, serv);
@@ -189,9 +202,9 @@ void HttpResponse::processDeleteRequest(const VirtualServer *conf,
 
 void HttpResponse::setResponseString(std::string pr, std::string s_c, std::string s_r)
 {
-	_proto = pr;
-	_status_code = s_c;
-	_status_reason = s_r;
+	_proto           = pr;
+	_status_code     = s_c;
+	_status_reason   = s_r;
 	_response_string = _proto + " " + _status_code + " " + _status_reason + "\r\n";
 }
 
@@ -232,7 +245,7 @@ void HttpResponse::insertHeader(std::string name, std::string value)
 void HttpResponse::setTimeHeader(void)
 {
 	time_t now = time(nullptr);
-	char buf[100];
+	char   buf[100];
 
 	std::strftime(buf, 100, "%a, %d %b %Y %H:%M:%S %Z", gmtime(&now));
 	insertHeader("Date", buf);
@@ -276,7 +289,7 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server)
 void
 HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port)
 {
-	_cgi_env["AUTH_TYPE"] = "";
+	_cgi_env["AUTH_TYPE"]         = "";
 	if (!request.getBody().empty())
 	{
 		_cgi_env["CONTENT_LENGTH"] = std::to_string(request.getBody().size());
@@ -291,21 +304,21 @@ HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absol
 	else
 		_cgi_env["PATH_TRANSLATED"] = absolute_path; // @todo GET ABSOLUTE PATH
 //	_cgi_env["PATH_TRANSLATED"] = "/Users/megagosha/42/webserv/www/final"; // @todo GET ABSOLUTE PATH
-	_cgi_env["SCRIPT_FILENAME"] = absolute_path;
-	_cgi_env["QUERY_STRING"] = request.getQueryString();
-	_cgi_env["REMOTE_ADDR"] = request.getClientIp();
-	_cgi_env["REMOTE_HOST"] = "";
-	_cgi_env["REMOTE_IDENT"] = "";
-	_cgi_env["REMOTE_USER"] = "";
-	_cgi_env["REQUEST_METHOD"] = request.getMethod();
-	_cgi_env["PATH_INFO"] = absolute_path;
-	_cgi_env["SCRIPT_NAME"] = request.getRequestUri();
+	_cgi_env["SCRIPT_FILENAME"]     = absolute_path;
+	_cgi_env["QUERY_STRING"]        = request.getQueryString();
+	_cgi_env["REMOTE_ADDR"]         = request.getClientIp();
+	_cgi_env["REMOTE_HOST"]         = "";
+	_cgi_env["REMOTE_IDENT"]        = "";
+	_cgi_env["REMOTE_USER"]         = "";
+	_cgi_env["REQUEST_METHOD"]      = request.getMethod();
+	_cgi_env["PATH_INFO"]           = absolute_path;
+	_cgi_env["SCRIPT_NAME"]         = request.getRequestUri();
 	std::map<std::string, std::string>::const_iterator it = request.getHeaderFields().find("Host");
 	if (it == request.getHeaderFields().end())
 		_cgi_env["SERVER_NAME"] = ""; //@todo check logic Maybe get server name from VirtualServer config
 	else
 		_cgi_env["SERVER_NAME"] = it->second;
-	_cgi_env["SERVER_PORT"] = std::to_string(serv_port); // + '\0';
+	_cgi_env["SERVER_PORT"]     = std::to_string(serv_port); // + '\0';
 	_cgi_env["SERVER_PROTOCOL"] = "HTTP/1.1";
 	_cgi_env["SERVER_SOFTWARE"] = "topserv_v0.1";
 }
@@ -314,16 +327,16 @@ HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absol
 //@todo rewrite
 HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 {
-	int fd[2];
-	char **envp;
-	char tmp[64001]; //store current path
-	char **argv = new char *[2];
-	pid_t nChild;
-	int status;
-	int aStdinPipe[2];
-	int aStdoutPipe[2];
-	int nResult;
-	char *str;
+	int                                          fd[2];
+	char                                         **envp;
+	char                                         tmp[64001]; //store current path
+	char                                         **argv = new char *[2];
+	pid_t                                        nChild;
+	int                                          status;
+	int                                          aStdinPipe[2];
+	int                                          aStdoutPipe[2];
+	int                                          nResult;
+	char                                         *str;
 	std::map<std::string, std::string>::iterator it;
 
 
@@ -384,7 +397,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 		close(aStdoutPipe[PIPE_WRITE]);
 		//buffer size is limited. so we should try reading while child process is alive;
 
-		int i;
+		int          i;
 		KqueueEvents kq(1);
 		kq.addFd(aStdoutPipe[PIPE_READ]);
 //		kq.addProcess(nChild);
@@ -437,9 +450,11 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 
 int HttpResponse::sendResponse(int fd, HttpRequest *req)
 {
-	std::map<std::string, std::string>::iterator it = _header.begin();
-	std::vector<char> headers_vec;
-	HTTPStatus res = HTTP_OK;
+	std::map<std::string, std::string>::iterator it  = _header.begin();
+	std::vector<char>                            headers_vec;
+	HTTPStatus                                   res = HTTP_OK;
+
+//	if (req->getParsingError() == 0)
 
 	if (!_cgi_path.empty() && req != nullptr)
 	{
@@ -652,69 +667,69 @@ const std::string &HttpResponse::getReasonForStatus(HTTPStatus status)
 	}
 }
 
-const std::string HttpResponse::HTTP_REASON_CONTINUE = "Continue";
-const std::string HttpResponse::HTTP_REASON_SWITCHING_PROTOCOLS = "Switching Protocols";
-const std::string HttpResponse::HTTP_REASON_PROCESSING = "Processing";
-const std::string HttpResponse::HTTP_REASON_OK = "OK";
-const std::string HttpResponse::HTTP_REASON_CREATED = "Created";
-const std::string HttpResponse::HTTP_REASON_ACCEPTED = "Accepted";
-const std::string HttpResponse::HTTP_REASON_NONAUTHORITATIVE = "Non-Authoritative Information";
-const std::string HttpResponse::HTTP_REASON_NO_CONTENT = "No Content";
-const std::string HttpResponse::HTTP_REASON_RESET_CONTENT = "Reset Content";
-const std::string HttpResponse::HTTP_REASON_PARTIAL_CONTENT = "Partial Content";
-const std::string HttpResponse::HTTP_REASON_MULTI_STATUS = "Multi Status";
-const std::string HttpResponse::HTTP_REASON_ALREADY_REPORTED = "Already Reported";
-const std::string HttpResponse::HTTP_REASON_IM_USED = "IM Used";
-const std::string HttpResponse::HTTP_REASON_MULTIPLE_CHOICES = "Multiple Choices";
-const std::string HttpResponse::HTTP_REASON_MOVED_PERMANENTLY = "Moved Permanently";
-const std::string HttpResponse::HTTP_REASON_FOUND = "Found";
-const std::string HttpResponse::HTTP_REASON_SEE_OTHER = "See Other";
-const std::string HttpResponse::HTTP_REASON_NOT_MODIFIED = "Not Modified";
-const std::string HttpResponse::HTTP_REASON_USE_PROXY = "Use Proxy";
-const std::string HttpResponse::HTTP_REASON_TEMPORARY_REDIRECT = "Temporary Redirect";
-const std::string HttpResponse::HTTP_REASON_PERMANENT_REDIRECT = "Permanent Redirect";
-const std::string HttpResponse::HTTP_REASON_BAD_REQUEST = "Bad Request";
-const std::string HttpResponse::HTTP_REASON_UNAUTHORIZED = "Unauthorized";
-const std::string HttpResponse::HTTP_REASON_PAYMENT_REQUIRED = "Payment Required";
-const std::string HttpResponse::HTTP_REASON_FORBIDDEN = "Forbidden";
-const std::string HttpResponse::HTTP_REASON_NOT_FOUND = "Not Found";
-const std::string HttpResponse::HTTP_REASON_METHOD_NOT_ALLOWED = "Method Not Allowed";
-const std::string HttpResponse::HTTP_REASON_NOT_ACCEPTABLE = "Not Acceptable";
-const std::string HttpResponse::HTTP_REASON_PROXY_AUTHENTICATION_REQUIRED = "Proxy Authentication Required";
-const std::string HttpResponse::HTTP_REASON_REQUEST_TIMEOUT = "Request Time-out";
-const std::string HttpResponse::HTTP_REASON_CONFLICT = "Conflict";
-const std::string HttpResponse::HTTP_REASON_GONE = "Gone";
-const std::string HttpResponse::HTTP_REASON_LENGTH_REQUIRED = "Length Required";
-const std::string HttpResponse::HTTP_REASON_PRECONDITION_FAILED = "Precondition Failed";
-const std::string HttpResponse::HTTP_REASON_REQUEST_ENTITY_TOO_LARGE = "Request Entity Too Large";
-const std::string HttpResponse::HTTP_REASON_REQUEST_URI_TOO_LONG = "Request-URI Too Large";
-const std::string HttpResponse::HTTP_REASON_UNSUPPORTED_MEDIA_TYPE = "Unsupported Media Type";
+const std::string HttpResponse::HTTP_REASON_CONTINUE                        = "Continue";
+const std::string HttpResponse::HTTP_REASON_SWITCHING_PROTOCOLS             = "Switching Protocols";
+const std::string HttpResponse::HTTP_REASON_PROCESSING                      = "Processing";
+const std::string HttpResponse::HTTP_REASON_OK                              = "OK";
+const std::string HttpResponse::HTTP_REASON_CREATED                         = "Created";
+const std::string HttpResponse::HTTP_REASON_ACCEPTED                        = "Accepted";
+const std::string HttpResponse::HTTP_REASON_NONAUTHORITATIVE                = "Non-Authoritative Information";
+const std::string HttpResponse::HTTP_REASON_NO_CONTENT                      = "No Content";
+const std::string HttpResponse::HTTP_REASON_RESET_CONTENT                   = "Reset Content";
+const std::string HttpResponse::HTTP_REASON_PARTIAL_CONTENT                 = "Partial Content";
+const std::string HttpResponse::HTTP_REASON_MULTI_STATUS                    = "Multi Status";
+const std::string HttpResponse::HTTP_REASON_ALREADY_REPORTED                = "Already Reported";
+const std::string HttpResponse::HTTP_REASON_IM_USED                         = "IM Used";
+const std::string HttpResponse::HTTP_REASON_MULTIPLE_CHOICES                = "Multiple Choices";
+const std::string HttpResponse::HTTP_REASON_MOVED_PERMANENTLY               = "Moved Permanently";
+const std::string HttpResponse::HTTP_REASON_FOUND                           = "Found";
+const std::string HttpResponse::HTTP_REASON_SEE_OTHER                       = "See Other";
+const std::string HttpResponse::HTTP_REASON_NOT_MODIFIED                    = "Not Modified";
+const std::string HttpResponse::HTTP_REASON_USE_PROXY                       = "Use Proxy";
+const std::string HttpResponse::HTTP_REASON_TEMPORARY_REDIRECT              = "Temporary Redirect";
+const std::string HttpResponse::HTTP_REASON_PERMANENT_REDIRECT              = "Permanent Redirect";
+const std::string HttpResponse::HTTP_REASON_BAD_REQUEST                     = "Bad Request";
+const std::string HttpResponse::HTTP_REASON_UNAUTHORIZED                    = "Unauthorized";
+const std::string HttpResponse::HTTP_REASON_PAYMENT_REQUIRED                = "Payment Required";
+const std::string HttpResponse::HTTP_REASON_FORBIDDEN                       = "Forbidden";
+const std::string HttpResponse::HTTP_REASON_NOT_FOUND                       = "Not Found";
+const std::string HttpResponse::HTTP_REASON_METHOD_NOT_ALLOWED              = "Method Not Allowed";
+const std::string HttpResponse::HTTP_REASON_NOT_ACCEPTABLE                  = "Not Acceptable";
+const std::string HttpResponse::HTTP_REASON_PROXY_AUTHENTICATION_REQUIRED   = "Proxy Authentication Required";
+const std::string HttpResponse::HTTP_REASON_REQUEST_TIMEOUT                 = "Request Time-out";
+const std::string HttpResponse::HTTP_REASON_CONFLICT                        = "Conflict";
+const std::string HttpResponse::HTTP_REASON_GONE                            = "Gone";
+const std::string HttpResponse::HTTP_REASON_LENGTH_REQUIRED                 = "Length Required";
+const std::string HttpResponse::HTTP_REASON_PRECONDITION_FAILED             = "Precondition Failed";
+const std::string HttpResponse::HTTP_REASON_REQUEST_ENTITY_TOO_LARGE        = "Request Entity Too Large";
+const std::string HttpResponse::HTTP_REASON_REQUEST_URI_TOO_LONG            = "Request-URI Too Large";
+const std::string HttpResponse::HTTP_REASON_UNSUPPORTED_MEDIA_TYPE          = "Unsupported Media Type";
 const std::string HttpResponse::HTTP_REASON_REQUESTED_RANGE_NOT_SATISFIABLE = "Requested Range Not Satisfiable";
-const std::string HttpResponse::HTTP_REASON_EXPECTATION_FAILED = "Expectation Failed";
-const std::string HttpResponse::HTTP_REASON_IM_A_TEAPOT = "I'm a Teapot";
-const std::string HttpResponse::HTTP_REASON_ENCHANCE_YOUR_CALM = "Enchance Your Calm";
-const std::string HttpResponse::HTTP_REASON_MISDIRECTED_REQUEST = "Misdirected Request";
-const std::string HttpResponse::HTTP_REASON_UNPROCESSABLE_ENTITY = "Unprocessable Entity";
-const std::string HttpResponse::HTTP_REASON_LOCKED = "Locked";
-const std::string HttpResponse::HTTP_REASON_FAILED_DEPENDENCY = "Failed Dependency";
-const std::string HttpResponse::HTTP_REASON_UPGRADE_REQUIRED = "Upgrade Required";
-const std::string HttpResponse::HTTP_REASON_PRECONDITION_REQUIRED = "Precondition Required";
-const std::string HttpResponse::HTTP_REASON_TOO_MANY_REQUESTS = "Too Many Requests";
+const std::string HttpResponse::HTTP_REASON_EXPECTATION_FAILED              = "Expectation Failed";
+const std::string HttpResponse::HTTP_REASON_IM_A_TEAPOT                     = "I'm a Teapot";
+const std::string HttpResponse::HTTP_REASON_ENCHANCE_YOUR_CALM              = "Enchance Your Calm";
+const std::string HttpResponse::HTTP_REASON_MISDIRECTED_REQUEST             = "Misdirected Request";
+const std::string HttpResponse::HTTP_REASON_UNPROCESSABLE_ENTITY            = "Unprocessable Entity";
+const std::string HttpResponse::HTTP_REASON_LOCKED                          = "Locked";
+const std::string HttpResponse::HTTP_REASON_FAILED_DEPENDENCY               = "Failed Dependency";
+const std::string HttpResponse::HTTP_REASON_UPGRADE_REQUIRED                = "Upgrade Required";
+const std::string HttpResponse::HTTP_REASON_PRECONDITION_REQUIRED           = "Precondition Required";
+const std::string HttpResponse::HTTP_REASON_TOO_MANY_REQUESTS               = "Too Many Requests";
 const std::string HttpResponse::HTTP_REASON_REQUEST_HEADER_FIELDS_TOO_LARGE = "Request Header Fields Too Large";
-const std::string HttpResponse::HTTP_REASON_UNAVAILABLE_FOR_LEGAL_REASONS = "Unavailable For Legal Reasons";
-const std::string HttpResponse::HTTP_REASON_INTERNAL_SERVER_ERROR = "Internal Server Error";
-const std::string HttpResponse::HTTP_REASON_NOT_IMPLEMENTED = "Not Implemented";
-const std::string HttpResponse::HTTP_REASON_BAD_GATEWAY = "Bad Gateway";
-const std::string HttpResponse::HTTP_REASON_SERVICE_UNAVAILABLE = "Service Unavailable";
-const std::string HttpResponse::HTTP_REASON_GATEWAY_TIMEOUT = "Gateway Time-Out";
-const std::string HttpResponse::HTTP_REASON_VERSION_NOT_SUPPORTED = "HTTP Version Not Supported";
-const std::string HttpResponse::HTTP_REASON_VARIANT_ALSO_NEGOTIATES = "Variant Also Negotiates";
-const std::string HttpResponse::HTTP_REASON_INSUFFICIENT_STORAGE = "Insufficient Storage";
-const std::string HttpResponse::HTTP_REASON_LOOP_DETECTED = "Loop Detected";
-const std::string HttpResponse::HTTP_REASON_NOT_EXTENDED = "Not Extended";
+const std::string HttpResponse::HTTP_REASON_UNAVAILABLE_FOR_LEGAL_REASONS   = "Unavailable For Legal Reasons";
+const std::string HttpResponse::HTTP_REASON_INTERNAL_SERVER_ERROR           = "Internal Server Error";
+const std::string HttpResponse::HTTP_REASON_NOT_IMPLEMENTED                 = "Not Implemented";
+const std::string HttpResponse::HTTP_REASON_BAD_GATEWAY                     = "Bad Gateway";
+const std::string HttpResponse::HTTP_REASON_SERVICE_UNAVAILABLE             = "Service Unavailable";
+const std::string HttpResponse::HTTP_REASON_GATEWAY_TIMEOUT                 = "Gateway Time-Out";
+const std::string HttpResponse::HTTP_REASON_VERSION_NOT_SUPPORTED           = "HTTP Version Not Supported";
+const std::string HttpResponse::HTTP_REASON_VARIANT_ALSO_NEGOTIATES         = "Variant Also Negotiates";
+const std::string HttpResponse::HTTP_REASON_INSUFFICIENT_STORAGE            = "Insufficient Storage";
+const std::string HttpResponse::HTTP_REASON_LOOP_DETECTED                   = "Loop Detected";
+const std::string HttpResponse::HTTP_REASON_NOT_EXTENDED                    = "Not Extended";
 const std::string HttpResponse::HTTP_REASON_NETWORK_AUTHENTICATION_REQUIRED = "Network Authentication Required";
-const std::string HttpResponse::HTTP_REASON_UNKNOWN = "???";
-const std::string HttpResponse::DATE = "Date";
-const std::string HttpResponse::SET_COOKIE = "Set-Cookie";
+const std::string HttpResponse::HTTP_REASON_UNKNOWN                         = "???";
+const std::string HttpResponse::DATE                                        = "Date";
+const std::string HttpResponse::SET_COOKIE                                  = "Set-Cookie";
 
 

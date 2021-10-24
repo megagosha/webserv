@@ -144,7 +144,7 @@ void VirtualServer::setBodySize(std::list<std::string>::iterator &it,
 	unsigned long body_size = 0;
 
 	Utils::skipTokens(it, end, 1);
-	body_size = std::stoi(*it);
+	body_size = std::stoi(*it) * 1000000; //value is given in mb
 	_body_size_limit = body_size;
 	Utils::skipTokens(it, end, 2);
 }

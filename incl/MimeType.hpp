@@ -17,6 +17,9 @@ public:
 	MimeType(std::string const &path_to_conf);
 
 	static const char *getType(std::string const &file_path);
+
+	static std::string getFileExtension(const std::string &type);
+
 	class MimeTypeException : public std::exception
 			{
 		const std::string m_msg;

@@ -110,10 +110,12 @@ std::string Session::getIpFromSock() {
 }
 
 void Session::parseRequest(long bytes) {
-    std::string res(bytes, 0);
+//	if (bytes > Socket::DEF)
+//		bytes = DEFAULT_MAX_SIZE;
+    std::string res(bytes, 0); //@todo think about file size limit;
     Utils::recv(bytes, _fd, res);
     if (_request == nullptr) {
-        _request = new HttpRequest(res, getIpFromSock(), bytes);
+        _request = new HttpRequest(res, getIpFromSock(), bytes, _server_socket);
     }
     else
         _request->appendBody(res, bytes);
@@ -131,6 +133,7 @@ void Session::prepareResponse() {
     std::string   path;
     VirtualServer *config = _server_socket->getServerByHostHeader(
             _request->getHeaderFields());
+    //@todo null check
     _response = new HttpResponse(*this, config);
     _status   = READY_TO_SEND;
 //	if (config == nullptr)

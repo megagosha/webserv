@@ -59,7 +59,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
             ++it;
             //@todo THROW ERROR if nothing else worked
         }
-        MimeType("/Users/edebi/Desktop/webserv/mime.conf"); //@todo put mime path to config
+        MimeType("/Users/megagosha/42/webserv/mime.conf"); //@todo put mime path to config
         validate(serv);
         apply(serv);
     }
@@ -83,6 +83,7 @@ void Server::prepareResponse(std::map<int, Session *>::iterator sess_iter, long 
         return;
     }
     sess_iter->second->parseRequest(bytes);
+
     std::cout << "Request parsed " << std::endl;
     std::cout << "method: " << sess_iter->second->getRequest()->getMethod() << std::endl;
     std::cout << "uri: " << sess_iter->second->getRequest()->getRequestUri() << std::endl;
@@ -104,7 +105,7 @@ void Server::closeConnection(int cur_fd) {
 
     sess_iter = _sessions.find(cur_fd);
     if (sess_iter == _sessions.end())
-        throw ServerException("WTF");
+        throw ServerException("invalid fd in close connection");
     sess_iter->second->end();
     _sessions.erase(cur_fd);
     _pending_sessions.erase(cur_fd);
@@ -165,6 +166,7 @@ void Server::processResponse(std::pair<int, struct kevent *> &updates) {
                 if (c_it != _sessions.end()
                     && c_it->second->getRequest() != nullptr && c_it->second->getRequest()->getParsingError() == HttpResponse::HTTP_CONTINUE) {
                     c_it->second->getRequest()->sendContinue(cur_fd);
+                    c_it->second->getRequest()->setParsingError(0);
                     c_it->second->getRequest()->setReady(false);
                 }
             }

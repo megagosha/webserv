@@ -21,7 +21,6 @@
 
 #define MAX_AWAIT_CONN 100
 #define MAX_KQUEUE_EV 100
-
 /*
  * Server {
  * Sockets int fd - Socket obj
