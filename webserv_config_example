@@ -8,7 +8,7 @@
 #error_page: error_code relative_path (relative to root)
 server {
     listen 127.0.0.1;
-    port 8080;
+    port 8081;
     error_page 404 www/error/404.html;
     error_page 404 www/error/405.html;
     client_max_body_size 1024;
@@ -17,12 +17,12 @@ server {
     methods POST GET DELETE;
     autoindex on; #turned on by default;
     index index.html; #specify default file
-    file_upload /Upload;
+    file_upload /Users/megagosha/42/webserv/www/final/Upload/;
  }
  location /images/hero.jpg
  {
-     root /Users/mac/CLionProjects/webservwww/final/;
-    return /final/images/profile.jpg;
+    root /Users/megagosha/42/webserv/www/final/;
+    return /images/profile.jpg;
  }
  location *.php {
     root /Users/mac/CLionProjects/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE

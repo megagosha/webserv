@@ -48,6 +48,11 @@ bool Location::isFileUploadOn() const
 	return !_file_upload.empty();
 }
 
+const std::string &Location::getFileUploadPath() const
+{
+    return (_file_upload);
+}
+
 const std::string &Location::getIndex() const
 {
 	return _index;
@@ -77,7 +82,9 @@ Location::Location() : _autoindex_on(true),
 					   _file_upload(""),
 					   _index("index.html"), _root("/"), _cgi_pass(""), _ret("")
 {
-	_methods.insert(_methods.begin(), 3, true);
+	_methods.reserve(3);
+    _methods[0] = true;
+	_methods.insert(_methods.begin() + 1, 2, false);
 }
 
 Location::Location(const Location &rhs) : _autoindex_on(rhs._autoindex_on),
@@ -107,7 +114,7 @@ Location::~Location()
 {
 }
 
-bool Location::methodAllowed(const std::string &method)
+bool Location::methodAllowed(const std::string &method) const
 {
 	switch (hashMethod(method))
 	{
@@ -157,7 +164,7 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 		{
 			Utils::skipTokens(it, end, 1);
 
-			_methods[0] = false;
+			_methods[0] = true;
 			_methods[1] = false;
 			_methods[2] = false;
 			while (*it != ";")

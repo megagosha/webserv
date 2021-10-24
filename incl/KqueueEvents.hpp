@@ -37,6 +37,8 @@ public:
 
 	void addProcess(pid_t proc);
 
+	int getQueueFd(void) const;
+
 	void deleteFd(int fd, bool write = false);
 
 	std::pair<int, struct kevent *> getUpdates(int = 5);

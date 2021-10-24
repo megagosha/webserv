@@ -13,7 +13,6 @@ bool isNumber(const std::string &str)
 	return true;
 }
 
-
 uint16_t VirtualServer::getPort() const
 {
 	return _port;
@@ -145,7 +144,7 @@ void VirtualServer::setBodySize(std::list<std::string>::iterator &it,
 	unsigned long body_size = 0;
 
 	Utils::skipTokens(it, end, 1);
-	body_size = std::stoi(*it);
+	body_size = std::stoi(*it) * 1000000; //value is given in mb
 	_body_size_limit = body_size;
 	Utils::skipTokens(it, end, 2);
 }
@@ -175,7 +174,7 @@ void VirtualServer::setLocation(std::list<std::string>::iterator &it,
 	_locations.insert(std::make_pair(path, loc));
 }
 
-std::map<std::string, Location>::iterator VirtualServer::checkCgi(std::string const &path)
+std::map<std::string, Location>::const_iterator VirtualServer::checkCgi(std::string const &path) const
 {
 	size_t find = path.find_last_of('.');
 	if (find == std::string::npos)
@@ -184,8 +183,10 @@ std::map<std::string, Location>::iterator VirtualServer::checkCgi(std::string co
 	std::string loc_ext;
 	if (ext.empty())
 		return (_locations.end());
-	for (std::map<std::string, Location>::iterator it = _locations.begin(); it != _locations.end(); ++it)
+	for (std::map<std::string, Location>::const_iterator it = _locations.begin(); it != _locations.end(); ++it)
 	{
+		if (it->second.getCgiPass().empty())
+			continue;
 		find = it->first.find_last_of('.');
 		if (find != std::string::npos)
 			loc_ext = it->first.substr(it->first.find_last_of('.'));
@@ -197,7 +198,7 @@ std::map<std::string, Location>::iterator VirtualServer::checkCgi(std::string co
 	return (_locations.end());
 }
 
-std::map<std::string, Location>::iterator VirtualServer::findRouteFromUri(std::string normalized_uri)
+std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(std::string normalized_uri) const
 {
 	if (normalized_uri.empty())
 		return (_locations.end());
@@ -205,13 +206,13 @@ std::map<std::string, Location>::iterator VirtualServer::findRouteFromUri(std::s
 	unsigned long i = 0;
 	int best = 0;
 	int cur_best = 0;
-	std::map<std::string, Location>::iterator it;
+	std::map<std::string, Location>::const_iterator it;
 	it = checkCgi(normalized_uri);
 	if (it == _locations.end())
 		it = _locations.begin();
 	else
 		return (it);
-	std::map<std::string, Location>::iterator search_res;
+	std::map<std::string, Location>::const_iterator search_res;
 	for (; it != _locations.end(); ++it)
 	{
 		i = 0;
@@ -246,49 +247,6 @@ std::map<std::string, Location>::iterator VirtualServer::findRouteFromUri(std::s
 	return (search_res);
 }
 
-//1. get request path (remove query, normalize path, find location, append root, create response)
-//2.
-HttpResponse VirtualServer::generate(const HttpRequest &request)
-{
-	std::string req_no_query;
-	std::map<std::string, Location>::iterator it;
-	std::map<std::string, Location>::iterator loc_route;
-
-	req_no_query = request.getNormalizedPath();
-
-	if (req_no_query.empty())
-		return (HttpResponse(400, *this));
-
-	loc_route = findRouteFromUri(req_no_query); //@todo add search for cgi_location
-	if (loc_route == _locations.end())
-		return (HttpResponse(400, *this));
-
-	if (!loc_route->second.methodAllowed(request.getMethod()))
-	{
-		//https://datatracker.ietf.org/doc/html/rfc7231#section-6.5.5
-		//@todo TEST Allow header field with supported methods;
-		return (HttpResponse(405, *this, loc_route->second));
-	}
-	//@todo validate root field in each location
-	req_no_query = req_no_query.replace(0, 1, loc_route->second.getRoot());
-	if (*request.getRequestUri().rbegin() == '/')
-	{
-		std::string index = loc_route->second.getIndex();
-		if (!index.empty())
-		{
-			req_no_query = req_no_query + index;
-			return (HttpResponse(request, req_no_query, *this, loc_route->second));
-		} else if (loc_route->second.isAutoindexOn() && request.getMethod() == "GET")
-			//@todo create directory listing page
-			return (HttpResponse(500, *this));
-		//index enabled
-		return (HttpResponse(400, *this));
-	} else
-	{
-		return (HttpResponse(request, req_no_query, *this, loc_route->second));
-	}
-}
-
 VirtualServer &VirtualServer::operator=(const VirtualServer &rhs)
 {
 	if (this == &rhs)
@@ -320,7 +278,6 @@ bool operator==(VirtualServer &lhs, VirtualServer &rhs)
 	return (true);
 }
 
-
 VirtualServer::VirtualServer(const VirtualServer &rhs) :
 		_port(rhs._port),
 		_host(rhs._host),
@@ -331,6 +288,41 @@ VirtualServer::VirtualServer(const VirtualServer &rhs) :
 		_body_size_limit(rhs._body_size_limit),
 		_directory_listing_on(rhs._directory_listing_on)
 {}
+
+const Location *VirtualServer::getLocationFromRequest(const HttpRequest &req) const
+{
+	location_it it;
+	std::string uri = req.getNormalizedPath();
+	if (uri.empty())
+		return (nullptr);
+
+	it = findRouteFromUri(uri); //@todo add search for cgi_location
+	if (it == _locations.end())
+		return (nullptr);
+	return (&it->second);
+}
+
+VirtualServer::method_type VirtualServer::hashMethod(const std::string &inString)
+{
+	if (inString == "GET") return VirtualServer::GET;
+	if (inString == "POST") return VirtualServer::POST;
+	if (inString == "DELETE") return VirtualServer::DELETE;
+	return (VirtualServer::OTHER);}
+
+std::string VirtualServer::unhashMethod(VirtualServer::method_type type)
+{
+	switch (type)
+	{
+		case GET :
+			return ("GET");
+		case POST:
+			return ("POST");
+		case DELETE:
+			return ("DELETE");
+		default:
+			return ("OTHER");
+	}
+}
 
 //check if _method is allowed
 //check if request is to file or folder

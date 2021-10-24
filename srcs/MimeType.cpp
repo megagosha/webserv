@@ -8,7 +8,7 @@
 //{
 //
 //}
-std::multimap<std::string, std::string> MimeType::_types;
+ std::multimap<std::string, std::string> MimeType::_types;
 
 MimeType::MimeType(const std::string &path_to_conf)
 {
@@ -33,12 +33,7 @@ MimeType::MimeType(const std::string &path_to_conf)
 			_types.insert(std::make_pair(*it, mime_type));
 			Utils::skipTokens(it, end, 1);
 		}
-		if (*(it->rbegin()) == ';')
-		{
-			it->pop_back();
-			_types.insert(std::make_pair(*it, mime_type));
-		}
-		else
+		if (*(it->rbegin()) != ';')
 			throw MimeTypeException("Mime confing syntax error");
 	}
 }
@@ -59,11 +54,18 @@ const char *MimeType::getType(const std::string &file_path)
 	std::multimap<std::string, std::string>::iterator res = _types.find(ext);
 	if (res == _types.end())
 		return ("application/octet-stream");
-	std::cout << "Found :" << res->second << std::endl;
 	return res->second.data();
 }
 
-
+std::string MimeType::getFileExtension(const std::string &type)
+{
+	for (std::multimap<std::string, std::string>::iterator it = _types.begin(); it != _types.end(); ++it)
+	{
+		if (it->second == type)
+			return (it->first);
+	}
+	return ("");
+}
 MimeType::MimeTypeException::MimeTypeException(const std::string &msg) : m_msg(msg)
 {
 

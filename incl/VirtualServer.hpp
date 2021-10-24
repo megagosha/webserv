@@ -21,26 +21,29 @@ class VirtualServer
 {
 
 private:
-	uint16_t _port;
-	in_addr_t _host;
-	std::string _server_name;
+	uint16_t						_port;
+	in_addr_t						_host;
+	std::string						_server_name;
 	bool _def_config; //@todo delete field
-	std::map<short, std::string> _error_pages;
+	std::map<short, std::string>	_error_pages;
 	std::map<std::string, Location> _locations;
-	unsigned long _body_size_limit;
-	bool _directory_listing_on;
+	unsigned long					_body_size_limit;
+	bool							_directory_listing_on;
 
 public:
+
+	typedef std::map<std::string, Location>::const_iterator location_it;
 	enum method_type
 	{
-		GET,
-		POST,
-		DELETE,
-		OTHER
+		GET = 0,
+		POST = 1,
+		DELETE = 2,
+		OTHER = 3
 	};
 
    static method_type  hashMethod(std::string const &inString);
 
+   static std::string unhashMethod(method_type type);
 	VirtualServer();
 
 	VirtualServer &operator=(const VirtualServer &rhs);
@@ -75,8 +78,6 @@ public:
 
 	bool isDirectoryListingOn() const;
 
-//	std::map<std::string, Location> location;
-
 	void setHost(std::list<std::string>::iterator &it,
 				 std::list<std::string>::iterator &end);
 
@@ -92,14 +93,16 @@ public:
 	void setLocation(std::list<std::string>::iterator &it,
 					 std::list<std::string>::iterator &end);
 
-	std::map<std::string, Location>::iterator findRouteFromUri(std::string normalized_uri);
+	std::map<std::string, Location>::const_iterator findRouteFromUri(std::string normalized_uri) const;
 
-	std::map<std::string, Location>::iterator checkCgi(std::string const &path);
+	std::map<std::string, Location>::const_iterator checkCgi(std::string const &path) const;
 
 	//1. get request path (remove query, normalize path, find location, append root, create response)
 	//2.
 	HttpResponse generate(const HttpRequest &request);
     friend bool operator== (VirtualServer &lhs, VirtualServer &rhs);
+
+    const Location *getLocationFromRequest(const HttpRequest &req) const;
 
 	class VirtualServerException : public std::exception
 	{
