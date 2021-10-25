@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <Socket.hpp>
 #include "Session.hpp"
+#include "FileStats.hpp"
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
@@ -37,6 +38,7 @@ class Socket;
 
 class HttpResponse {
 public:
+    static const std::string AUTOINDEX_HTML;
     enum HTTPStatus {
         HTTP_CONTINUE                        = 100,
         HTTP_SWITCHING_PROTOCOLS             = 101,
@@ -181,15 +183,17 @@ public:
     HttpResponse(Session &session,
                  const VirtualServer *config);
 
-    void processGetRequest(const VirtualServer *pServer, const Location *loc, std::string &path);
+    void processGetRequest(const VirtualServer *pServer, const Location *loc, std::string &path, const std::string &req_uri);
 
     void processPostRequest(Session &session, const VirtualServer *pServer, const Location *loc, std::string &path);
 
     void
     processDeleteRequest(const VirtualServer *pServer, std::string &path);
 
+    void insertTableIntoBody(const std::string &str);
+    void getAutoIndex(const std::string &path, const std::string &uri_path);
 
-    static const std::string HTTP_REASON_CONTINUE;
+        static const std::string HTTP_REASON_CONTINUE;
     static const std::string HTTP_REASON_SWITCHING_PROTOCOLS;
     static const std::string HTTP_REASON_PROCESSING;
     static const std::string HTTP_REASON_OK;

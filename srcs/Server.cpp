@@ -59,7 +59,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
             ++it;
             //@todo THROW ERROR if nothing else worked
         }
-        MimeType("/Users/megagosha/42/webserv/mime.conf"); //@todo put mime path to config
+        MimeType("/Users/edebi/Desktop/webserv/mime.conf"); //@todo put mime path to config
         validate(serv);
         apply(serv);
     }

@@ -151,7 +151,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         return;
     } else if (request.find("\r\n\r\n", rdt.second) == rdt.second) {
     	std::cout << "len " << _content_length << " max " << _max_body_size << std::endl;
-    	if (_content_length - rdt.second > _max_body_size)
+    	if (_content_length > _max_body_size)
     	{
     		_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
     		_ready = true;
