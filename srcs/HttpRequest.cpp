@@ -130,7 +130,6 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _parsing_error = HttpResponse::HTTP_CONTINUE;
         return;
     }
-    	unsigned long max_body_size;
     	it = _header_fields.find("Host");
     	VirtualServer *serv = sock->getServerByHostHeader(_header_fields);
     	if (serv == nullptr)
@@ -142,14 +141,17 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     	if (serv->getBodySizeLimit() != 0)
     		_max_body_size = MAX_DEFAULT_BODY_SIZE;
     	else
-    		max_body_size = serv->getBodySizeLimit();
+    		_max_body_size = serv->getBodySizeLimit();
 
 
+    	std::cout << "cur pos: " << rdt.second << std::endl;
+    	std::cout << "res char: " << request[rdt.second] << " " << request[rdt.second+ 4] << std::endl;
     if (_chunked) {
-        parseChunked(request, rdt.second, (long) bytes); //@todo types fix
+        parseChunked(request, rdt.second + 4, (long) bytes); //@todo types fix
         return;
     } else if (request.find("\r\n\r\n", rdt.second) == rdt.second) {
-    	if (_content_length - rdt.second > max_body_size)
+    	std::cout << "len " << _content_length << " max " << _max_body_size << std::endl;
+    	if (_content_length - rdt.second > _max_body_size)
     	{
     		_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
     		_ready = true;
@@ -157,7 +159,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     	}
         _body += request.substr(rdt.second + 4, rdt.second + _content_length);
         std::cout << "parsed " << "size: " << _body.size() << std::endl;
-        std::cout << "body content: " << _body << std::endl;
+//        std::cout << "body content: " << _body << std::endl;
         if (_body.size() == _content_length)
             _ready = true;
         else {
