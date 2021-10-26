@@ -20,6 +20,10 @@ std::string FileStats::getSizeInMb() const {
     return (std::to_string((float) _file_stats.st_size / 1000000));
 }
 
+bool FileStats::isDir() const {
+    return (S_ISDIR(_file_stats.st_mode));
+}
+
 FileStats::~FileStats() {
 
 }

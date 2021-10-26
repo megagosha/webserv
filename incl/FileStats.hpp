@@ -4,6 +4,7 @@
 
 #ifndef WEBSERV_FILESTATS_HPP
 #define WEBSERV_FILESTATS_HPP
+
 #include <string>
 #include <iostream>
 #include <dirent.h>
@@ -16,11 +17,19 @@ class FileStats {
     struct stat _file_stats;
 public:
     FileStats(const std::string &path_toFile);
+
     std::string getTimeModified();
+
     std::string getSizeInMb() const;
+
     ~FileStats();
+
     FileStats(const FileStats &rhs);
+
     FileStats &operator=(const FileStats &rhs);
+
+    bool isDir() const;
+
 };
 
 

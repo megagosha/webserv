@@ -102,9 +102,10 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
 
 
 void
-HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, std::string &path, const std::string &req_uri) {
+HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, std::string &path,
+                                const std::string &req_uri) {
     if (Utils::isDirectory(path)) {
-        if (loc->isAutoindexOn() ) {
+        if (loc->isAutoindexOn()) {
             getAutoIndex(path, req_uri);
             return;
         }
@@ -434,11 +435,11 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
 //	if (_body_size > 0)
 //		write(STDOUT_FILENO, _body.data(), _body.size());
     send(fd, headers_vec.data(), headers_vec.size(), 0);
-    write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
+//    write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
     if (_body_size > 0)
         send(fd, _body.data(), _body.size(), 0);
-    if (_body_size > 0)
-    	write(STDOUT_FILENO, _body.data(), _body.size());
+//    if (_body_size > 0)
+//    	write(STDOUT_FILENO, _body.data(), _body.size());
     return (EXIT_SUCCESS);
 }
 
@@ -483,7 +484,7 @@ void HttpResponse::insertTableIntoBody(const std::string &str) {
     _body.insert(_body.begin() + pos, str.begin(), str.end());
     _body_size = _body.size();
     insertHeader("Content-Type", "text/html");
-	setResponseString("HTTP/1.1", "200", HTTP_REASON_OK);
+    setResponseString("HTTP/1.1", "200", HTTP_REASON_OK);
 }
 
 void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_path) {
@@ -500,7 +501,12 @@ void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_
         while ((di_struct = readdir(dp)) != nullptr) {
             FileStats file(path + "/" + di_struct->d_name);
             table += "<tr>";
-            table += "<td><a href=\"" + uri_path + di_struct->d_name + "\">" + std::string(di_struct->d_name) + "</a></td>";
+
+            table += "<td><a href=\"" + uri_path;
+            table += di_struct->d_name;
+            if (file.isDir())
+                table += "/";
+            table += "\">" + std::string(di_struct->d_name) + "</a></td>";
             table += "<td>" + file.getSizeInMb() + "</td>";
             table += "<td>" + file.getTimeModified() + "</td>";
             table += "</tr>";
