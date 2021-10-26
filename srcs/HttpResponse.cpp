@@ -416,7 +416,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
     if (_body_size > 0 && _cgi_path.empty())
         insertHeader("Content-Length", std::to_string(_body.size()));
     headers_vec.reserve(500);
-    headers_vec.insert(headers_vec.end(), _response_string.begin(), _response_string.end());
+    headers_vec.insert(headers_vec.begin(), _response_string.begin(), _response_string.end());
     for (it = _header.begin(); it != _header.end(); ++it) {
         headers_vec.insert(headers_vec.end(), it->first.begin(), it->first.end());
         headers_vec.push_back(':');
@@ -434,8 +434,11 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
 //	if (_body_size > 0)
 //		write(STDOUT_FILENO, _body.data(), _body.size());
     send(fd, headers_vec.data(), headers_vec.size(), 0);
+    write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
     if (_body_size > 0)
         send(fd, _body.data(), _body.size(), 0);
+    if (_body_size > 0)
+    	write(STDOUT_FILENO, _body.data(), _body.size());
     return (EXIT_SUCCESS);
 }
 
@@ -479,6 +482,8 @@ void HttpResponse::insertTableIntoBody(const std::string &str) {
     _body.assign(AUTOINDEX_HTML.begin(), AUTOINDEX_HTML.end());
     _body.insert(_body.begin() + pos, str.begin(), str.end());
     _body_size = _body.size();
+    insertHeader("Content-Type", "text/html");
+	setResponseString("HTTP/1.1", "200", HTTP_REASON_OK);
 }
 
 void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_path) {
