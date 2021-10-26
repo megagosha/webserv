@@ -15,7 +15,8 @@ bool Utils::fileExistsAndReadable(const std::string &name) {
 };
 
 bool Utils::fileExistsAndWritable(const std::string &name) {
-    if (FILE *file = fopen(name.c_str(), "w")) {
+    FILE *file;
+    if ((file = std::fopen(name.c_str(), "r+")) != nullptr) {
         fclose(file);
         return true;
     } else {
@@ -218,10 +219,27 @@ void Utils::clearNullArr(char **arr) {
 bool Utils::isDirectory(const std::string &path) {
     struct stat s;
     if (stat(path.data(), &s) == 0) {
-        if (s.st_mode & S_IFDIR)
-            return (true);
+        return (S_ISDIR(s.st_mode));
     }
     return (false);
+}
+
+bool Utils::isNotEmptyDirectory(const std::string &path)
+{
+    int n = 0;
+    struct dirent *d;
+    DIR *dir = opendir(path.data());
+    if (dir == nullptr) //Not a directory or doesn't exist
+        return false;
+    while ((d = readdir(dir)) != nullptr) {
+        if(++n > 2)
+            break;
+    }
+    closedir(dir);
+    if (n > 2)
+        return (true);
+    else
+        return (false);
 }
 
 bool Utils::isFile(const std::string &path) {

@@ -124,6 +124,13 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
         return;
     }
+    if (_method == "DELETE" || _method == "GET")
+    {
+        _body.clear();
+        _content_length = 0;
+        _ready = true;
+        return;
+    }
     it = _header_fields.find("Expect");
     if (it != _header_fields.end()) {
         std::cout << "found expect" << std::endl;
@@ -311,7 +318,6 @@ HttpRequest &HttpRequest::operator=(const HttpRequest &rhs) {
     _parsing_error = rhs._parsing_error;
     return (*this);
 }
-
 const std::string &HttpRequest::getQueryString() const {
     return _query_string;
 }

@@ -17,7 +17,6 @@
 #include <map>
 #include <sys/types.h>
 #include <dirent.h>
-
 struct Utils {
 
 public:
@@ -64,6 +63,8 @@ public:
     static bool fileExistsAndWritable(const std::string &name);
 
     static int countFilesInFolder(const std::string &path);
+
+    static bool isNotEmptyDirectory(const std::string &path);
 
 };
 

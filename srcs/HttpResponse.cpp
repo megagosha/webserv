@@ -161,6 +161,11 @@ HttpResponse::processPostRequest(Session &session,
 
 void HttpResponse::processDeleteRequest(const VirtualServer *conf,
                                         std::string &path) {
+    if (Utils::isNotEmptyDirectory(path))
+    {
+        setError(HTTP_CONFLICT, conf);
+        return;
+    }
     if (!Utils::fileExistsAndWritable(path)) {
         if (errno == EACCES)
             setError(HTTP_FORBIDDEN, conf);
@@ -495,6 +500,7 @@ void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_
     std::string   table;
 
     dp = opendir(path.data());
+    table += "<h1>" + uri_path + "</h1>";
     table += "<table>";
     table += "<tr> <th>File name</th> <th>File size</th> <th>Last modified</th> </tr>";
     if (dp != NULL) {
