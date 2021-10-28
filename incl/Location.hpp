@@ -11,12 +11,13 @@
 #include "VirtualServer.hpp"
 #include "Utils.hpp"
 
-class Location {
+class Location
+{
 
 public:
-    bool isFileUpload() const;
+	bool isFileUpload() const;
 
-    void setFileUpload(bool fileUpload);
+	void setFileUpload(bool fileUpload);
 
 private:
 	std::string _path;
@@ -24,42 +25,48 @@ public:
 	const std::string &getPath() const;
 
 private:
-	bool _autoindex_on;
-	bool _file_upload;
-    std::string _index;
-    std::string _root;
-    std::string _cgi_pass;
-    std::vector<bool> _methods;//0 -> get 1 -> post 2 -> delete
-    std::string _ret;
+	bool              _autoindex_on;
+	bool              _file_upload;
+	std::string       _index;
+	std::string       _root;
+	std::string       _cgi_pass;
+	std::vector<bool> _methods;//0 -> get 1 -> post 2 -> delete
+	std::string       _ret;
+	unsigned long     _max_body;
 public:
-    bool isAutoindexOn() const;
+	unsigned long getMaxBody() const;
 
-    bool isFileUploadOn() const;
+public:
+	bool isAutoindexOn() const;
 
-    const std::string &getIndex() const;
+	bool isFileUploadOn() const;
 
-    const std::string &getRoot() const;
+	const std::string &getIndex() const;
 
-    const std::string &getCgiPass() const;
+	const std::string &getRoot() const;
 
-    const std::vector<bool> &getMethods() const;
+	const std::string &getCgiPass() const;
 
-    const std::string &getRet() const;
+	const std::vector<bool> &getMethods() const;
 
-    Location();
+	const std::string &getRet() const;
 
-    Location(const Location &rhs);
+	Location();
 
-    Location &operator=(const Location &rhs);
+	Location(const Location &rhs);
 
-    ~Location();
+	Location &operator=(const Location &rhs);
 
-    bool methodAllowed(const std::string &method) const;
+	~Location();
 
-    void setLocation(std::list<std::string>::iterator &it,
-                     std::list<std::string>::iterator &end, std::string path);
+	bool methodAllowed(const std::string &method) const;
 
-    std::string getAllowedMethodsField(void) const;
+	void setLocation(std::list<std::string>::iterator &it,
+					 std::list<std::string>::iterator &end, std::string path);
+
+	std::string getAllowedMethodsField(void) const;
+
+	bool isMaxBodySet(void) const;
 
 
 };

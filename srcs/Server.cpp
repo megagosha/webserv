@@ -23,12 +23,14 @@ Server::~Server() {
 
 void signal_handler(int signal)
 {
+	std::cout << "YO" << std::endl;
+	sleep(10);
 	exit(signal);
 }
 
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
     signal(SIGPIPE, SIG_IGN);
-    std::signal(SIGABRT, signal_handler);
+    std::signal(SIGABRT, &signal_handler);
 
     Utils::tokenizeFileStream(config_file, _tok_list);
     std::list<std::string>::iterator     end = _tok_list.end();
@@ -57,6 +59,10 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
             if (it != end && *it == "error_page") {
                 serv.setErrorPage(it, end);
                 continue;
+            }
+            if (it != end && *it == "server_name") {
+            	serv.setServerName(it, end);
+            	continue;
             }
             if (it != end && *it == "location") {
                 serv.setLocation(it, end);

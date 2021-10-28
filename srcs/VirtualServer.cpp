@@ -128,6 +128,13 @@ void VirtualServer::setBodySize(std::list<std::string>::iterator &it,
     Utils::skipTokens(it, end, 2);
 }
 
+void VirtualServer::setServerName(std::list<std::string>::iterator &it,
+								std::list<std::string>::iterator &end) {
+	Utils::skipTokens(it, end, 1);
+	_server_name        = *it; //value is given in mb
+	Utils::skipTokens(it, end, 2);
+}
+
 void VirtualServer::setErrorPage(std::list<std::string>::iterator &it,
                                  std::list<std::string>::iterator &end) {
     short       err;

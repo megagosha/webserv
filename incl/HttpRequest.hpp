@@ -24,8 +24,8 @@ enum Limits
 {
 	MAX_METHOD            = 8,
 	MAX_URI               = 2000,
-	MAX_V                 = 8,
-	MAX_FIELDS            = 30,
+	MAX_V                 = 100,
+	MAX_FIELDS            = 100,
 	MAX_NAME              = 100,
 	MAX_VALUE             = 1000,
 	MAX_DEFAULT_BODY_SIZE = 1000000

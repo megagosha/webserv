@@ -82,7 +82,7 @@ const std::string &Location::getRet() const
 
 Location::Location() : _path(""), _autoindex_on(true),
 					   _file_upload(false),
-					   _index(""), _root("/"), _cgi_pass(""), _ret("")
+					   _index(""), _root("/"), _cgi_pass(""), _ret(""), _max_body(0)
 {
 	_methods.reserve(4);
 	_methods[0] = true;
@@ -93,7 +93,7 @@ Location::Location(const Location &rhs) : _path(rhs._path),
 										  _autoindex_on(rhs._autoindex_on),
 										  _file_upload(rhs._file_upload),
 										  _index(rhs._index), _root(rhs._root), _cgi_pass(rhs._cgi_pass),
-										  _ret(rhs._ret)
+										  _ret(rhs._ret), _max_body(rhs._max_body)
 {
 	_methods = rhs._methods;
 }
@@ -110,6 +110,7 @@ Location &Location::operator=(const Location &rhs)
 		_ret          = rhs._ret;
 		_cgi_pass     = rhs._cgi_pass;
 		_methods      = rhs._methods;
+		_max_body = rhs._max_body;
 	}
 	return *this;
 }
@@ -218,6 +219,12 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 			_index = *it;
 			Utils::skipTokens(it, end, 2);
 		}
+		if (*it == "client_max_body_size")
+		{
+			Utils::skipTokens(it, end, 1);
+			_max_body = std::stoul(*it) * 1000000; // value given in mb
+			Utils::skipTokens(it, end, 2);
+		}
 		if (*it == "file_upload")
 		{
 			Utils::skipTokens(it, end, 1);
@@ -243,6 +250,10 @@ bool Location::isFileUpload() const
 	return _file_upload;
 }
 
+bool Location::isMaxBodySet() const
+{
+	return _max_body != 0;
+}
 void Location::setFileUpload(bool fileUpload)
 {
 	_file_upload = fileUpload;
@@ -251,4 +262,9 @@ void Location::setFileUpload(bool fileUpload)
 const std::string &Location::getPath() const
 {
 	return _path;
+}
+
+unsigned long Location::getMaxBody() const
+{
+	return _max_body;
 }

@@ -113,7 +113,13 @@ void Session::parseRequest(long bytes) {
 //	if (bytes > Socket::DEF)
 //		bytes = DEFAULT_MAX_SIZE;
     std::string res(bytes, 0); //@todo think about file size limit;
-    Utils::recv(bytes, _fd, res);
+    try {
+    	Utils::recv(bytes, _fd, res);
+    }
+    catch (std::exception &e)
+    {
+    	end();
+    }
     if (_request == nullptr) {
         _request = new HttpRequest(res, getIpFromSock(), bytes, _server_socket);
     }

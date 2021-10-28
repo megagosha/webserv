@@ -26,6 +26,7 @@ bool Utils::fileExistsAndWritable(const std::string &name) {
 
 void Utils::recv(long bytes, int socket, std::string &res) {
     if (read(socket, &res[0], bytes) < 0) { //@todo gracefull close
+    	std::cout << std::strerror(errno);
 		throw GeneralException("Error while reading socket");
     }
 }

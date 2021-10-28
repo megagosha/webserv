@@ -43,6 +43,12 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
         setError(HTTP_METHOD_NOT_ALLOWED, config);
         return;
     }
+    if (loc->isMaxBodySet() && loc->getMaxBody() < req->getBody().size())
+    {
+    	session.setKeepAlive(false);
+		setError(HTTP_REQUEST_ENTITY_TOO_LARGE, config);
+		return;
+    }
 
 //	std::map<std::string, std::string>::const_iterator it = req->getHeaderFields().find("Expected");
 //	if (it != req->getHeaderFields().end() && it->second == "100-continue")
@@ -132,7 +138,7 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
         setError(HTTP_NOT_FOUND, serv);
         return;
     }
-    if (!Utils::fileExistsAndWritable(req->getNormalizedPath()))
+    if (Utils::fileExistsAndWritable(req->getNormalizedPath()))
         setResponseString("HTTP/1.1", HTTP_NO_CONTENT);
     else
         setResponseString("HTTP/1.1", HTTP_CREATED);
@@ -146,7 +152,6 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
     if (rf) {
         rf.write(req->getBody().data(), req->getBody().size());
         rf.close();
-        setResponseString("HTTP/1.1", HTTP_OK);
         insertHeader("Content-Location", loc->getPath() + file_name);
         return;
     } else {
@@ -157,7 +162,14 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
 
 void
 HttpResponse::processPostRequest(const VirtualServer *serv) {
-        setError(HTTP_METHOD_NOT_ALLOWED, serv);
+//        setError(HTTP_METHOD_NOT_ALLOWED, serv);
+	if (serv == nullptr)
+	{
+		setError(HTTP_BAD_REQUEST, nullptr);
+		return;
+	}
+	setResponseString("HTTP/1.1", HTTP_OK);
+	_body_size = 0;
 }
 
 void HttpResponse::processDeleteRequest(const VirtualServer *conf,
