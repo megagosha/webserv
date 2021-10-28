@@ -12,9 +12,20 @@
 #include "Utils.hpp"
 
 class Location {
+
+public:
+    bool isFileUpload() const;
+
+    void setFileUpload(bool fileUpload);
+
 private:
-    bool _autoindex_on;
-    std::string _file_upload;
+	std::string _path;
+public:
+	const std::string &getPath() const;
+
+private:
+	bool _autoindex_on;
+	bool _file_upload;
     std::string _index;
     std::string _root;
     std::string _cgi_pass;
@@ -50,7 +61,6 @@ public:
 
     std::string getAllowedMethodsField(void) const;
 
-    const std::string &getFileUploadPath() const;
 
 };
 

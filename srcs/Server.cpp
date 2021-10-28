@@ -21,8 +21,14 @@ Server::~Server() {
     }
 }
 
+void signal_handler(int signal)
+{
+	exit(signal);
+}
+
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
     signal(SIGPIPE, SIG_IGN);
+    std::signal(SIGABRT, signal_handler);
 
     Utils::tokenizeFileStream(config_file, _tok_list);
     std::list<std::string>::iterator     end = _tok_list.end();
@@ -59,7 +65,7 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
             ++it;
             //@todo THROW ERROR if nothing else worked
         }
-        MimeType("/Users/edebi/Desktop/webserv/mime.conf"); //@todo put mime path to config
+        MimeType("/Users/megagosha/42/webserv/mime.conf"); //@todo put mime path to config
         validate(serv);
         apply(serv);
     }
@@ -162,8 +168,9 @@ void Server::processResponse(std::pair<int, struct kevent *> &updates) {
                 if (c_it != _sessions.end() && c_it->second->shouldClose()) {
                     c_it->second->end();
                     _sessions.erase(cur_fd);
+                    _pending_sessions.erase(cur_fd);
                 }
-                if (c_it != _sessions.end()
+                else if (c_it != _sessions.end()
                     && c_it->second->getRequest() != nullptr && c_it->second->getRequest()->getParsingError() == HttpResponse::HTTP_CONTINUE) {
                     c_it->second->getRequest()->sendContinue(cur_fd);
                     c_it->second->getRequest()->setParsingError(0);

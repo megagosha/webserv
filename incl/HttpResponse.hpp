@@ -109,7 +109,7 @@ public:
     };
 private:
     std::string                        _proto;
-    std::string                        _status_code;
+    u_int16_t                          _status_code;
     std::string                        _status_reason;
     std::string                        _response_string;
     std::string                        _absolute_path;
@@ -123,9 +123,9 @@ private:
 //	CgiHandler *_cgi_obj;
 
 public:
-    void setResponseString(std::string pr, std::string s_c, std::string s_r);
+    void setResponseString(const std::string& pr, HTTPStatus status);
 
-    HTTPStatus writeFileToBuffer(std::string &file_path);
+    HTTPStatus writeFileToBuffer(const std::string &file_path);
 
     void insertHeader(std::string name, std::string value);
 
@@ -164,7 +164,7 @@ public:
 
     const std::string &getProto() const;
 
-    const std::string &getStatusCode() const;
+    uint16_t getStatusCode() const;
 
     const std::string &getStatusReason() const;
 
@@ -183,14 +183,16 @@ public:
     HttpResponse(Session &session,
                  const VirtualServer *config);
 
-    void processGetRequest(const VirtualServer *pServer, const Location *loc, std::string &path, const std::string &req_uri);
+    void processGetRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req);
 
-    void processPostRequest(Session &session, const VirtualServer *pServer, const Location *loc, std::string &path);
+    void processPostRequest(const VirtualServer *serv);
+
+    void processPutRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req);
 
     void
-    processDeleteRequest(const VirtualServer *pServer, std::string &path);
+    processDeleteRequest(const VirtualServer *pServer, HttpRequest *req);
 
-    void insertTableIntoBody(const std::string &str);
+    void insertTableIntoBody(const std::string &str, const std::string &uri);
     void getAutoIndex(const std::string &path, const std::string &uri_path);
 
         static const std::string HTTP_REASON_CONTINUE;

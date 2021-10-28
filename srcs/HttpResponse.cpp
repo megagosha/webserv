@@ -24,10 +24,8 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
 
  */
 HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
-    const Location    *loc;
-    const HttpRequest *req = session.getRequest();
-    std::string       path;
-
+    const Location *loc;
+    HttpRequest    *req = session.getRequest();
 
     if (config == nullptr) {
         setError(HTTP_BAD_REQUEST, config);
@@ -45,8 +43,6 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
         setError(HTTP_METHOD_NOT_ALLOWED, config);
         return;
     }
-    path = req->getNormalizedPath();
-    path = path.replace(0, 1, loc->getRoot());
 
 //	std::map<std::string, std::string>::const_iterator it = req->getHeaderFields().find("Expected");
 //	if (it != req->getHeaderFields().end() && it->second == "100-continue")
@@ -57,20 +53,21 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
 //	}
     if (!loc->getRet().empty()) {
         insertHeader("Location", loc->getRet());
-        setResponseString("HTTP/1.1", std::to_string(HTTP_MOVED_PERMANENTLY),
-                          getReasonForStatus(HTTP_MOVED_PERMANENTLY));
+        setResponseString("HTTP/1.1", HTTP_MOVED_PERMANENTLY);
         return;
     }
     if (!loc->getCgiPass().empty()) {
-        prepareCgiEnv(*req, path, config->getPort());
+        prepareCgiEnv(*req, req->getNormalizedPath(), config->getPort());
         _cgi_path = loc->getCgiPass();
         return;
     } else if (req->getMethod() == "GET")
-        processGetRequest(config, loc, path, req->getRequestUri());
+        processGetRequest(config, loc, req);
     else if (req->getMethod() == "POST")
-        processPostRequest(session, config, loc, path);
+        processPostRequest(config);
     else if (req->getMethod() == "DELETE")
-        processDeleteRequest(config, path);
+        processDeleteRequest(config, req);
+    else if (req->getMethod() == "PUT")
+        processPutRequest(config, loc, req);
 }
 
 HttpResponse::HttpResponse(const HttpResponse &rhs) :
@@ -102,20 +99,16 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
 
 
 void
-HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, std::string &path,
-                                const std::string &req_uri) {
-    if (Utils::isDirectory(path)) {
+HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req) {
+    if (Utils::isDirectory(req->getNormalizedPath())) {
         if (loc->isAutoindexOn()) {
-            getAutoIndex(path, req_uri);
+            getAutoIndex(req->getNormalizedPath(), req->getUriNoQuery());
             return;
         }
-        if (!loc->getIndex().empty()) {
-            path = path + loc->getIndex();
-        }
     }
-    HTTPStatus err = writeFileToBuffer(path);
+    HTTPStatus err = writeFileToBuffer(req->getNormalizedPath());
     if (err == HTTP_OK) {
-        setResponseString("HTTP/1.1", "200", "OK");
+        setResponseString("HTTP/1.1", HTTP_OK);
         return;
     } else {
         setError(err, serv);
@@ -124,70 +117,77 @@ HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, 
 }
 
 void
-HttpResponse::processPostRequest(Session &session,
-                                 const VirtualServer *serv,
-                                 const Location *loc, std::string &path) {
-    const HttpRequest                                  *req = session.getRequest();
-    std::string                                        extension;
-    std::map<std::string, std::string>::const_iterator it;
-    int                                                num_files;
+HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req) {
+//    std::map<std::string, std::string>::const_iterator it;
+    std::string                                        file_name;
 
-    if (Utils::isDirectory(path)) {
-        if (!loc->getIndex().empty())
-            path = path + loc->getIndex();
+    file_name = Utils::getFileNameFromRequest(req->getRequestUri());
+
+    if (!loc->isFileUploadOn()) {
+        setError(HTTP_METHOD_NOT_ALLOWED, serv);
+        return;
     }
-    if (loc->isFileUploadOn()) {
-        it            = req->getHeaderFields().find("Content-Type");
-        if (it != req->getHeaderFields().end())
-            extension = MimeType::getFileExtension(it->second);
-        num_files     = Utils::countFilesInFolder(loc->getFileUploadPath());
-        std::ofstream rf(loc->getFileUploadPath() + "uploaded_file" + std::to_string(num_files + 1) + "." + extension,
-                         std::ios::out | std::ios::binary);
-        if (!rf) {
-            setError(HTTP_INTERNAL_SERVER_ERROR, serv);
-            return;
-        } else {
-            rf.write(req->getBody().data(), req->getBody().size());
-            rf.close();
-            setResponseString("HTTP/1.1", "200", "OK");
-            return;
-        }
-    } else {
+//    it = req->getHeaderFields().find("Content-Type");
+    if (!Utils::checkIfPathExists(req->getNormalizedPath()) || file_name.empty()) {
         setError(HTTP_NOT_FOUND, serv);
         return;
     }
+    if (!Utils::fileExistsAndWritable(req->getNormalizedPath()))
+        setResponseString("HTTP/1.1", HTTP_NO_CONTENT);
+    else
+        setResponseString("HTTP/1.1", HTTP_CREATED);
+    std::ofstream rf(req->getNormalizedPath(), std::ios::out | std::ios::binary);
 
+//    if (it != req->getHeaderFields().end())
+//        extension = MimeType::getFileExtension(it->second);
+//    num_files     = Utils::countFilesInFolder(loc->getFileUploadPath());
+//    std::ofstream rf(loc->getFileUploadPath() + "uploaded_file" + std::to_string(num_files + 1) + "." + extension,
+//                     std::ios::out | std::ios::binary);
+    if (rf) {
+        rf.write(req->getBody().data(), req->getBody().size());
+        rf.close();
+        setResponseString("HTTP/1.1", HTTP_OK);
+        insertHeader("Content-Location", loc->getPath() + file_name);
+        return;
+    } else {
+        setError(HTTP_INTERNAL_SERVER_ERROR, serv);
+        return;
+    }
+}
+
+void
+HttpResponse::processPostRequest(const VirtualServer *serv) {
+        setError(HTTP_METHOD_NOT_ALLOWED, serv);
 }
 
 void HttpResponse::processDeleteRequest(const VirtualServer *conf,
-                                        std::string &path) {
-    if (Utils::isNotEmptyDirectory(path))
-    {
+                                        HttpRequest *req) {
+    if (Utils::isNotEmptyDirectory(req->getNormalizedPath())) {
         setError(HTTP_CONFLICT, conf);
         return;
     }
-    if (!Utils::fileExistsAndWritable(path)) {
+    if (!Utils::fileExistsAndWritable(req->getNormalizedPath())) {
         if (errno == EACCES)
             setError(HTTP_FORBIDDEN, conf);
         else
             setError(HTTP_GONE, conf);
     } else {
-        if (std::remove(path.data()) != 0)
+        if (std::remove(req->getNormalizedPath().data()) != 0)
             setError(HTTP_INTERNAL_SERVER_ERROR, conf);
         else
-            setResponseString("HTTP/1.1", "200", "OK");
+            setResponseString("HTTP/1.1", HTTP_OK);
     }
     return;
 }
 
-void HttpResponse::setResponseString(std::string pr, std::string s_c, std::string s_r) {
+void HttpResponse::setResponseString(const std::string &pr, HTTPStatus status) {
     _proto           = pr;
-    _status_code     = s_c;
-    _status_reason   = s_r;
-    _response_string = _proto + " " + _status_code + " " + _status_reason + "\r\n";
+    _status_code     = status;
+    _status_reason   = getReasonForStatus(status);
+    _response_string = _proto + " " + std::to_string(_status_code) + " " + _status_reason + "\r\n";
 }
 
-HttpResponse::HTTPStatus HttpResponse::writeFileToBuffer(std::string &file_path) {
+HttpResponse::HTTPStatus HttpResponse::writeFileToBuffer(const std::string &file_path) {
     long long int length;
     std::ifstream file(file_path, std::ifstream::in | std::ifstream::binary);
     if (file) {
@@ -213,7 +213,7 @@ HttpResponse::HTTPStatus HttpResponse::writeFileToBuffer(std::string &file_path)
 }
 
 void HttpResponse::insertHeader(std::string name, std::string value) {
-    _header.insert(std::make_pair(name, value));
+	_header[name] = value;
 }
 
 void HttpResponse::setTimeHeader(void) {
@@ -245,7 +245,12 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server) {
     std::string path;
     if (server != nullptr)
         server->getCustomErrorPagePath(code);
-    setResponseString("HTTP/1.1", error_code, reason_phrase);
+    setResponseString("HTTP/1.1", code);
+    if (code == HTTP_REQUEST_TIMEOUT)
+    {
+    	insertHeader("Connection", "close");
+    	_header.erase("Keep-Alive");
+    }
     if (!path.empty()) {
         short i = writeFileToBuffer(path);
         if (i == 200)
@@ -411,7 +416,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
 
     if (!_cgi_path.empty() && req != nullptr) {
         res = executeCgi(req);
-        setResponseString("HTTP/1.1", std::to_string(res), getReasonForStatus(res));
+        setResponseString("HTTP/1.1", res);
         //@todo check logic Should client always receive cgi errors?
         if (res != 200) {
             setError(res, nullptr); // @todo support custom error pages here
@@ -439,12 +444,13 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
 //	write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
 //	if (_body_size > 0)
 //		write(STDOUT_FILENO, _body.data(), _body.size());
+std::cout << _response_string << std::endl;
     send(fd, headers_vec.data(), headers_vec.size(), 0);
-//    write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
+    write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
     if (_body_size > 0)
         send(fd, _body.data(), _body.size(), 0);
-//    if (_body_size > 0)
-//    	write(STDOUT_FILENO, _body.data(), _body.size());
+    if (_body_size > 0)
+    	write(STDOUT_FILENO, _body.data(), _body.size());
     return (EXIT_SUCCESS);
 }
 
@@ -453,7 +459,7 @@ const std::string &HttpResponse::getProto() const {
     return _proto;
 }
 
-const std::string &HttpResponse::getStatusCode() const {
+uint16_t HttpResponse::getStatusCode() const {
     return _status_code;
 }
 
@@ -481,15 +487,16 @@ const std::string &HttpResponse::getAbsolutePath() const {
     return _absolute_path;
 }
 
-void HttpResponse::insertTableIntoBody(const std::string &str) {
+void HttpResponse::insertTableIntoBody(const std::string &str, const std::string &uri) {
     size_t pos = AUTOINDEX_HTML.find("<body>");
 
     pos += 6;
     _body.assign(AUTOINDEX_HTML.begin(), AUTOINDEX_HTML.end());
     _body.insert(_body.begin() + pos, str.begin(), str.end());
+    _body.insert(_body.begin() + 66, uri.begin(), uri.end());
     _body_size = _body.size();
     insertHeader("Content-Type", "text/html");
-    setResponseString("HTTP/1.1", "200", HTTP_REASON_OK);
+    setResponseString("HTTP/1.1", HTTP_OK);
 }
 
 void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_path) {
@@ -521,7 +528,7 @@ void HttpResponse::getAutoIndex(const std::string &path, const std::string &uri_
         closedir(dp);
     }
     table += "</table>";
-    insertTableIntoBody(table);
+    insertTableIntoBody(table, uri_path);
 }
 
 const std::string &HttpResponse::getReasonForStatus(HTTPStatus status) {
@@ -715,6 +722,6 @@ const std::string HttpResponse::HTTP_REASON_NETWORK_AUTHENTICATION_REQUIRED = "N
 const std::string HttpResponse::HTTP_REASON_UNKNOWN                         = "???";
 const std::string HttpResponse::DATE                                        = "Date";
 const std::string HttpResponse::SET_COOKIE                                  = "Set-Cookie";
-const std::string HttpResponse::AUTOINDEX_HTML                              = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Title</title></head><style>table {border: 1px solid #ccc;background-color: #f8f8f8;border-collapse: collapse;margin: 0;padding: 0;width: 100%;table-layout: fixed;text-align: left;}table td:last-child {border-bottom: 0;}</style><body></body></html>";
+const std::string HttpResponse::AUTOINDEX_HTML                              = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title></title></head><style>table {border: 1px solid #ccc;background-color: #f8f8f8;border-collapse: collapse;margin: 0;padding: 0;width: 100%;table-layout: fixed;text-align: left;}table td:last-child {border-bottom: 0;}</style><body></body></html>";
 
 

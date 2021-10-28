@@ -38,7 +38,8 @@ public:
 		GET = 0,
 		POST = 1,
 		DELETE = 2,
-		OTHER = 3
+        PUT = 3,
+		OTHER = 4
 	};
 
    static method_type  hashMethod(std::string const &inString);
@@ -102,7 +103,7 @@ public:
 	HttpResponse generate(const HttpRequest &request);
     friend bool operator== (VirtualServer &lhs, VirtualServer &rhs);
 
-    const Location *getLocationFromRequest(const HttpRequest &req) const;
+    const Location *getLocationFromRequest(HttpRequest &req) const;
 
 	class VirtualServerException : public std::exception
 	{

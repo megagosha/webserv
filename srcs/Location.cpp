@@ -14,28 +14,35 @@ VirtualServer::method_type hashMethod(std::string const &inString)
 	if (inString == "GET") return VirtualServer::GET;
 	if (inString == "POST") return VirtualServer::POST;
 	if (inString == "DELETE") return VirtualServer::DELETE;
+	if (inString == "PUT") return VirtualServer::PUT;
 	return (VirtualServer::OTHER);
 }
 
 std::string Location::getAllowedMethodsField() const
 {
-    std::string res;
+	std::string res;
 
-    if (_methods[2])
-        res.insert(0, "DELETE");
-    if (_methods[1])
-    {
-        if (!res.empty())
-            res.insert(0, ", ");
-        res.insert(0, "POST");
-    }
-    if (_methods[0])
-    {
-        if (!res.empty())
-            res.insert(0, ", ");
-        res.insert(0, "GET");
-    }
-    return (res);
+	if (_methods[2])
+		res.insert(0, "DELETE");
+	if (_methods[1])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "POST");
+	}
+	if (_methods[0])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "GET");
+	}
+	if (_methods[3])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "PUT");
+	}
+	return (res);
 }
 
 //	bool VirtualServer::Location::isAutoindexOn() const
@@ -45,12 +52,7 @@ std::string Location::getAllowedMethodsField() const
 
 bool Location::isFileUploadOn() const
 {
-	return !_file_upload.empty();
-}
-
-const std::string &Location::getFileUploadPath() const
-{
-    return (_file_upload);
+	return (_file_upload);
 }
 
 const std::string &Location::getIndex() const
@@ -78,16 +80,17 @@ const std::string &Location::getRet() const
 	return _ret;
 }
 
-Location::Location() : _autoindex_on(true),
-					   _file_upload(""),
-					   _index("index.html"), _root("/"), _cgi_pass(""), _ret("")
+Location::Location() : _path(""), _autoindex_on(true),
+					   _file_upload(false),
+					   _index(""), _root("/"), _cgi_pass(""), _ret("")
 {
-	_methods.reserve(3);
-    _methods[0] = true;
+	_methods.reserve(4);
+	_methods[0] = true;
 	_methods.insert(_methods.begin() + 1, 2, false);
 }
 
-Location::Location(const Location &rhs) : _autoindex_on(rhs._autoindex_on),
+Location::Location(const Location &rhs) : _path(rhs._path),
+										  _autoindex_on(rhs._autoindex_on),
 										  _file_upload(rhs._file_upload),
 										  _index(rhs._index), _root(rhs._root), _cgi_pass(rhs._cgi_pass),
 										  _ret(rhs._ret)
@@ -99,13 +102,14 @@ Location &Location::operator=(const Location &rhs)
 {
 	if (this != &rhs)
 	{
+		_path         = rhs._path;
 		_autoindex_on = rhs._autoindex_on;
-		_file_upload = rhs._file_upload;
-		_index = rhs._index;
-		_root = rhs._root;
-		_ret = rhs._ret;
-		_cgi_pass = rhs._cgi_pass;
-		_methods = rhs._methods;
+		_file_upload  = rhs._file_upload;
+		_index        = rhs._index;
+		_root         = rhs._root;
+		_ret          = rhs._ret;
+		_cgi_pass     = rhs._cgi_pass;
+		_methods      = rhs._methods;
 	}
 	return *this;
 }
@@ -124,6 +128,8 @@ bool Location::methodAllowed(const std::string &method) const
 			return (_methods[1]);
 		case VirtualServer::DELETE:
 			return (_methods[2]);
+		case VirtualServer::PUT:
+			return (_methods[3]);
 		default:
 			return (false);
 	}
@@ -132,7 +138,6 @@ bool Location::methodAllowed(const std::string &method) const
 void Location::setLocation(std::list<std::string>::iterator &it,
 						   std::list<std::string>::iterator &end, std::string path)
 {
-
 	Utils::skipTokens(it, end, 2);
 
 //	if (path[0] == '*' && *it == "cgi_pass")
@@ -143,6 +148,7 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 //		Utils::skipTokens(it, end, 2);
 //		return;
 //	}
+	_path = path;
 	std::list<std::string>::iterator check;
 	while (it != end && *it != "}")
 	{
@@ -152,7 +158,7 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 			_root = *it;
 			Utils::skipTokens(it, end, 2);
 		}
-	  	if (path[0] == '*' && *it == "cgi_pass")
+		if (path[0] == '*' && *it == "cgi_pass")
 		{
 			Utils::skipTokens(it, end, 1);
 			_cgi_pass = *it;
@@ -167,6 +173,7 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 			_methods[0] = true;
 			_methods[1] = false;
 			_methods[2] = false;
+			_methods[3] = false;
 			while (*it != ";")
 			{
 				switch (hashMethod(*it))
@@ -179,6 +186,9 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 						break;
 					case VirtualServer::DELETE:
 						_methods[2] = true;
+						break;
+					case VirtualServer::PUT:
+						_methods[3] = true;
 						break;
 					default:
 						throw VirtualServer::VirtualServerException("Method not supported " + *it);
@@ -211,7 +221,10 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 		if (*it == "file_upload")
 		{
 			Utils::skipTokens(it, end, 1);
-			_file_upload = *it;
+			if (*it == "on")
+				_file_upload = true;
+			else
+				_file_upload = false;
 			Utils::skipTokens(it, end, 2);
 		}
 		if (it != end && *it == "}")
@@ -223,4 +236,19 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 	if (it == end || *it != "}")
 		throw VirtualServer::VirtualServerException("Syntax error: }");
 	Utils::skipTokens(it, end, 1);
+}
+
+bool Location::isFileUpload() const
+{
+	return _file_upload;
+}
+
+void Location::setFileUpload(bool fileUpload)
+{
+	_file_upload = fileUpload;
+}
+
+const std::string &Location::getPath() const
+{
+	return _path;
 }

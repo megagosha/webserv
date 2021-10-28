@@ -49,11 +49,9 @@ parse(std::string &src, std::size_t token_start, const std::string &token_delim,
     return std::make_pair(true, token_end);
 }
 
-void HttpRequest::parse_request_uri(void) {
+void HttpRequest::processUri(void) {
     _query_string = Utils::getExt(_request_uri, '?');
-    std::string no_query = Utils::getWithoutExt(_request_uri, '?');
-    std::cout << _request_uri << std::endl;
-    _normalized_path = Utils::normalizePath(no_query);
+    _uri_no_query = Utils::getWithoutExt(_request_uri, '?');
 }
 
 //reserve field memory
@@ -61,6 +59,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         client_ip) {
 	if (sock == nullptr)
 		_chunked = false;
+    std::cout << request << std::endl;
     _chunked = false;
     _ready = false;
     _content_length = 0;
@@ -98,10 +97,12 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
         _header_fields.insert(std::make_pair(field_name, value));
         ++num_fields;
     }
+
+    processUri();
     std::map<std::string, std::string>::iterator it;
     std::cout << "Message _body" << std::endl;
     it = _header_fields.find("Transfer-Encoding");
-    parse_request_uri();
+    //parseRequestUri();
     if (it == _header_fields.end()) {
 
         it = _header_fields.find("Content-Length");
@@ -112,7 +113,7 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
                     _parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
                 }
 
-        } else if (_method == "POST" && _header_fields.find("Content-Length") == _header_fields.end() && !isChunked())
+        } else if ((_method == "POST" || _method == "PUT")  && _header_fields.find("Content-Length") == _header_fields.end() && !isChunked())
             _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
         _chunked = false;
     } else if (it->second.find("chunked") != std::string::npos)
@@ -120,10 +121,10 @@ HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, uns
     if (_parsing_error != 0) {
         return;
     }
-    if (!_chunked && _content_length == 0 && _method == "POST") {
-        _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
-        return;
-    }
+//    if (!_chunked && _content_length == 0 && _method == "POST") {
+//        _parsing_error = HttpResponse::HTTP_LENGTH_REQUIRED;
+//        return;
+//    }
     if (_method == "DELETE" || _method == "GET")
     {
         _body.clear();
@@ -356,5 +357,13 @@ unsigned long HttpRequest::getContentLength() const {
 void HttpRequest::setParsingError(uint16_t parsingError)
 {
 	_parsing_error = parsingError;
+}
+
+void HttpRequest::setNormalizedPath(const std::string &normalizedPath) {
+    _normalized_path = normalizedPath;
+}
+
+const std::string &HttpRequest::getUriNoQuery() const {
+    return _uri_no_query;
 }
 

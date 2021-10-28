@@ -18,6 +18,7 @@
 #include "Utils.hpp"
 #include "HttpResponse.hpp"
 #include "Socket.hpp"
+#include "Location.hpp"
 
 enum Limits
 {
@@ -33,14 +34,24 @@ enum Limits
 std::string &leftTrim(std::string &str, std::string chars);
 
 class Socket;
-
+class Location;
 class HttpRequest
 {
 private:
 	std::string                        _method;
 	std::string                        _request_uri;
 	std::string                        _query_string;
-	std::string                        _normalized_path; //1. removed ?query 2. expanded /../
+    std::string                        _uri_no_query;
+public:
+    const std::string &getUriNoQuery() const;
+
+private:
+    std::string                        _normalized_path;
+public:
+    void setNormalizedPath(const std::string &normalizedPath);
+
+private:
+    //1. removed ?query 2. expanded /../
 	std::string                        _http_v; //true if http/1.1
 	bool                               _chunked;
 	std::map<std::string, std::string> _header_fields;
@@ -52,10 +63,11 @@ private:
 	uint16_t                           _parsing_error;
 
 
-	void parse_request_uri(void);
 
 public:
-	unsigned long getContentLength() const;
+    void processUri(void);
+
+    unsigned long getContentLength() const;
 
 	void sendContinue(int fd);
 

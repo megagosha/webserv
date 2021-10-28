@@ -16,6 +16,8 @@
 #include <arpa/inet.h>
 #include <map>
 #include <sys/types.h>
+#include <csignal>
+
 #include <dirent.h>
 struct Utils {
 
@@ -28,7 +30,7 @@ public:
 
     static std::list<std::string> strTokenizer(const std::string &s, char c);
 
-    static std::string &normalizePath(std::string &s);
+    static std::string normalizePath(std::string s);
 
     static void skipTokens(std::list<std::string>::iterator &it,
                            std::list<std::string>::iterator &end, int num);
@@ -52,6 +54,8 @@ public:
 
     static std::string getWithoutExt(const std::string &str, char delim);
 
+    static std::string getFileNameFromRequest(const std::string &path);
+
     static char **mapToEnv(const std::map<std::string, std::string> &env);
 
     static void clearNullArr(char **arr);
@@ -62,9 +66,9 @@ public:
 
     static bool fileExistsAndWritable(const std::string &name);
 
-    static int countFilesInFolder(const std::string &path);
-
     static bool isNotEmptyDirectory(const std::string &path);
+
+    static bool checkIfPathExists(const std::string &path);
 
 };
 

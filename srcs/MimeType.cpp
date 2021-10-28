@@ -57,15 +57,15 @@ const char *MimeType::getType(const std::string &file_path)
 	return res->second.data();
 }
 
-std::string MimeType::getFileExtension(const std::string &type)
-{
-	for (std::multimap<std::string, std::string>::iterator it = _types.begin(); it != _types.end(); ++it)
-	{
-		if (it->second == type)
-			return (it->first);
-	}
-	return ("");
-}
+//std::string MimeType::getFileExtension(const std::string &type)
+//{
+//	for (std::multimap<std::string, std::string>::iterator it = _types.begin(); it != _types.end(); ++it)
+//	{
+//		if (it->second == type)
+//			return (it->first);
+//	}
+//	return ("");
+//}
 MimeType::MimeTypeException::MimeTypeException(const std::string &msg) : m_msg(msg)
 {
 

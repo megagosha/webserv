@@ -25,7 +25,7 @@ bool Utils::fileExistsAndWritable(const std::string &name) {
 };
 
 void Utils::recv(long bytes, int socket, std::string &res) {
-    if (read(socket, &res[0], bytes) < 0) {
+    if (read(socket, &res[0], bytes) < 0) { //@todo gracefull close
 		throw GeneralException("Error while reading socket");
     }
 }
@@ -61,7 +61,7 @@ std::list<std::string> Utils::strTokenizer(const std::string &s, char c) {
     return (tokens);
 }
 
-std::string &Utils::normalizePath(std::string &s) {
+std::string Utils::normalizePath(std::string s) {
     std::list<std::string> tokens;
     std::list<std::string>::reverse_iterator tmp1;
     std::list<std::string>::reverse_iterator it = tokens.rbegin();
@@ -250,17 +250,41 @@ bool Utils::isFile(const std::string &path) {
     return (false);
 }
 
-int Utils::countFilesInFolder(const std::string &path) {
-    DIR *dp;
-    int i = 0;
+bool Utils::checkIfPathExists(const std::string &path)
+{
+    size_t pos;
+    std::string new_path;
 
-    dp = opendir(path.data());
-
-    if (dp != NULL) {
-        while (readdir(dp) != nullptr) {
-            i++;
-        }
-        closedir(dp);
-    }
-    return (i);
+    pos = path.find_last_of('/');
+    if (pos == std::string::npos)
+        return (false);
+    new_path = path.substr(0, pos);
+    if (!new_path.empty() && isDirectory(new_path))
+        return (true);
+    return (false);
 }
+
+std::string Utils::getFileNameFromRequest(const std::string &path)
+{
+	size_t pos = path.find_last_of('/');
+	if (pos == std::string::npos)
+		return ("");
+	else
+		return (path.substr(pos + 1));
+}
+
+
+//int Utils::countFilesInFolder(const std::string &path) {
+//    DIR *dp;
+//    int i = 0;
+//
+//    dp = opendir(path.data());
+//
+//    if (dp != NULL) {
+//        while (readdir(dp) != nullptr) {
+//            i++;
+//        }
+//        closedir(dp);
+//    }
+//    return (i);
+//}

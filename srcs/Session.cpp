@@ -135,6 +135,12 @@ void Session::prepareResponse() {
             _request->getHeaderFields());
     //@todo null check
     _response = new HttpResponse(*this, config);
+    if (_keep_alive)
+    {
+    	_response->insertHeader("Connection", "Keep-Alive");
+    	_response->insertHeader("Keep-Alive", "timeout=5");
+
+    }
     _status   = READY_TO_SEND;
 //	if (config == nullptr)
 //	{
