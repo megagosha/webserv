@@ -120,19 +120,23 @@ void Session::parseRequest(long bytes) {
     {
     	end();
     }
-    if (_request == nullptr) {
+    size_t pos = 0;
+    if (_request == nullptr)
         _request = new HttpRequest(res, getIpFromSock(), bytes, _server_socket);
-    }
+    else if (_request->getRequestUri().empty())
+    	_request->parseRequestMessage(res, pos, _server_socket);
     else
-        _request->appendBody(res, bytes);
+        _request->appendBody(res, pos);
     std::cout << "parsed request size " << _request->getBody().size() << std::endl;
     std::cout << "chunked " << _request->isChunked() << std::endl;
-    std::map<std::string, std::string>::const_iterator it;
-    it              = _request->getHeaderFields().find("Connection");
-    if (it != _request->getHeaderFields().end() && it->second == "keep-alive")
-        _keep_alive = true;
-    else
-        _keep_alive = false;
+    if (!_request->getRequestUri().empty()){
+    	std::map<std::string, std::string>::const_iterator it;
+    	it              = _request->getHeaderFields().find("Connection");
+    	if (it != _request->getHeaderFields().end() && it->second == "keep-alive")
+    		_keep_alive = true;
+    	else
+    		_keep_alive = false;
+    }
 }
 
 void Session::prepareResponse() {

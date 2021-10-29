@@ -28,30 +28,24 @@ enum Limits
 	MAX_FIELDS            = 100,
 	MAX_NAME              = 100,
 	MAX_VALUE             = 1000,
+	MAX_MESSAGE			  = 10000,
 	MAX_DEFAULT_BODY_SIZE = 1000000
 };
 
 std::string &leftTrim(std::string &str, std::string chars);
 
 class Socket;
+
 class Location;
+
 class HttpRequest
 {
 private:
 	std::string                        _method;
 	std::string                        _request_uri;
 	std::string                        _query_string;
-    std::string                        _uri_no_query;
-public:
-    const std::string &getUriNoQuery() const;
-
-private:
-    std::string                        _normalized_path;
-public:
-    void setNormalizedPath(const std::string &normalizedPath);
-
-private:
-    //1. removed ?query 2. expanded /../
+	std::string                        _uri_no_query;
+	std::string                        _normalized_path;
 	std::string                        _http_v; //true if http/1.1
 	bool                               _chunked;
 	std::map<std::string, std::string> _header_fields;
@@ -61,13 +55,16 @@ private:
 	bool                               _ready;
 	unsigned long                      _max_body_size;
 	uint16_t                           _parsing_error;
-
-
+	std::string                        _buffer;
 
 public:
-    void processUri(void);
+	void setNormalizedPath(const std::string &normalizedPath);
 
-    unsigned long getContentLength() const;
+	const std::string &getUriNoQuery() const;
+
+	void processUri(void);
+
+	unsigned long getContentLength() const;
 
 	void sendContinue(int fd);
 
@@ -90,9 +87,9 @@ public:
 	//reserve field memory
 	HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes, Socket *sock);
 
-	void parseChunked(const std::string &request, unsigned long i, long bytes);
+	bool parseChunked(const std::string &request, unsigned long i, long bytes);
 
-	void appendBody(std::string &buff, long bytes);
+	bool appendBody(std::string &buff, size_t &pos);
 
 	const std::string &getMethod() const;
 
@@ -110,6 +107,14 @@ public:
 	const std::string &getQueryString() const;
 
 	const std::string &getNormalizedPath() const;
+
+	bool parseRequestLine(std::string &req, size_t &pos);
+
+	bool parseHeaders(std::string &req, size_t &pos);
+
+	bool parseRequestMessage(std::string &request, size_t &pos, Socket *sock);
+	bool processHeaders(Socket *sock);
+//	bool parseBody(std::string &request, size_t &pos, Socket *socket);
 };
 
 #endif //UNTITLED_HTTPREQUEST_HPP
