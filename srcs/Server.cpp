@@ -36,8 +36,8 @@ void signal_handler(int signal)
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV)
 {
 	signal(SIGPIPE, SIG_IGN);
-	std::signal(SIGABRT, &signal_handler);
-
+	std::signal(SIGINT, signal_handler);
+	std::signal(SIGQUIT, signal_handler);
 	Utils::tokenizeFileStream(config_file, _tok_list);
 	std::list<std::string>::iterator     end = _tok_list.end();
 	std::list<std::string>::iterator     it  = _tok_list.begin();
