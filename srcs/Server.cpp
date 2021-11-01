@@ -29,7 +29,7 @@ Server::~Server()
 void signal_handler(int signal)
 {
 	std::cout << "YO" << std::endl;
-	sleep(10);
+//	sleep(10);
 	exit(signal);
 }
 
@@ -112,15 +112,16 @@ void Server::prepareResponse(std::map<int, Session *>::iterator sess_iter, long 
 	}
 	sess_iter->second->parseRequest(bytes);
 
-	std::cout << "Request parsed " << std::endl;
-	std::cout << "method: " << sess_iter->second->getRequest()->getMethod() << std::endl;
-	std::cout << "uri: " << sess_iter->second->getRequest()->getRequestUri() << std::endl;
-	std::cout << "path: " << sess_iter->second->getRequest()->getNormalizedPath() << std::endl;
-	std::cout << "chunked: " << sess_iter->second->getRequest()->isChunked() << std::endl;
-	std::cout << "ready: " << sess_iter->second->getRequest()->isReady() << std::endl;
-	std::cout << "body: " << sess_iter->second->getRequest()->getBody() << std::endl;
-	std::cout << "body size: " << sess_iter->second->getRequest()->getBody().size() << std::endl;
-	std::cout << "content len: " << sess_iter->second->getRequest()->getContentLength() << std::endl;
+
+//	std::cout << "Request parsed " << std::endl;
+//	std::cout << "method: " << sess_iter->second->getRequest()->getMethod() << std::endl;
+//	std::cout << "uri: " << sess_iter->second->getRequest()->getRequestUri() << std::endl;
+//	std::cout << "path: " << sess_iter->second->getRequest()->getNormalizedPath() << std::endl;
+//	std::cout << "chunked: " << sess_iter->second->getRequest()->isChunked() << std::endl;
+//	std::cout << "ready: " << sess_iter->second->getRequest()->isReady() << std::endl;
+//	std::cout << "body: " << sess_iter->second->getRequest()->getBody() << std::endl;
+//	std::cout << "body size: " << sess_iter->second->getRequest()->getBody().size() << std::endl;
+//	std::cout << "content len: " << sess_iter->second->getRequest()->getContentLength() << std::endl;
 
 	if (sess_iter->second->getRequest()->isReady())
 	{
@@ -163,7 +164,7 @@ void Server::processRequests(std::pair<int, struct kevent *> &updates)
 			//accept new connection
 			if (it != _sockets.end())
 				acceptConnection(it);
-			else
+			else if (updates.second[i].data != 0)
 				prepareResponse(_sessions.find(cur_fd), updates.second[i].data);
 			if (cur_flags & EV_EOF)
 				closeConnection(cur_fd);

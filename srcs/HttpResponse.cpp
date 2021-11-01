@@ -27,6 +27,8 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
     const Location *loc;
     HttpRequest    *req = session.getRequest();
 
+    if (req->getMethod() == "POST")
+    	std::cout << "!" << std::endl;
     if (config == nullptr) {
         setError(HTTP_BAD_REQUEST, config);
         return;
@@ -207,7 +209,7 @@ HttpResponse::HTTPStatus HttpResponse::writeFileToBuffer(const std::string &file
         length = file.tellg();
         if (length <= 0) {
             _body_size = 0;
-            return (HTTP_INTERNAL_SERVER_ERROR);
+            return (HTTP_OK);
         }
         file.seekg(0, file.beg);
         _body_size = (std::size_t) length;
@@ -268,6 +270,8 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server) {
         if (i == 200)
             return;
     }
+//    if (code == HTTP_METHOD_NOT_ALLOWED)
+//    	return;
     res = getErrorHtml(error_code, reason_phrase);
     _body.insert(_body.end(), res.begin(), res.end());
     _body_size = _body.size();
@@ -422,11 +426,11 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
 int HttpResponse::sendResponse(int fd, HttpRequest *req) {
     std::map<std::string, std::string>::iterator it  = _header.begin();
     std::vector<char>                            headers_vec;
-    HTTPStatus                                   res = HTTP_OK;
 
 //	if (req->getParsingError() == 0)
 
     if (!_cgi_path.empty() && req != nullptr) {
+    	HTTPStatus                      res = HTTP_OK;
         res = executeCgi(req);
         setResponseString("HTTP/1.1", res);
         //@todo check logic Should client always receive cgi errors?
@@ -436,8 +440,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
         }
     }
     setTimeHeader();
-    if (_body_size > 0 && _cgi_path.empty())
-        insertHeader("Content-Length", std::to_string(_body.size()));
+    insertHeader("Content-Length", std::to_string(_body.size()));
     headers_vec.reserve(500);
     headers_vec.insert(headers_vec.begin(), _response_string.begin(), _response_string.end());
     for (it = _header.begin(); it != _header.end(); ++it) {

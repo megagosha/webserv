@@ -97,7 +97,7 @@ public:
 	void setServerName(std::list<std::string>::iterator &it,
 				  std::list<std::string>::iterator &end);
 
-	std::map<std::string, Location>::const_iterator findRouteFromUri(std::string normalized_uri) const;
+	std::map<std::string, Location>::const_iterator findRouteFromUri(const std::string& normalized_uri) const;
 
 	std::map<std::string, Location>::const_iterator checkCgi(std::string const &path) const;
 

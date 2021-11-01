@@ -6,13 +6,13 @@
 
 Session::Session()
         : _fd(), _server_socket(), _response(nullptr), _request(nullptr), _s_addr(), _keep_alive(false),
-          _status(UNUSED) {
+          _status(UNUSED), _p(0) {
 }
 
 Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _s_addr(),
                                        _keep_alive(rhs._keep_alive),
                                        _status(rhs._status),
-                                       _connection_timeout(rhs._connection_timeout) {
+                                       _connection_timeout(rhs._connection_timeout), _p(rhs._p) {
     setResponse(rhs._response);
     setRequest(rhs._request);
 }
@@ -25,6 +25,7 @@ Session &Session::operator=(const Session &rhs) {
     _keep_alive         = rhs._keep_alive;
     _status             = rhs._status;
     _connection_timeout = rhs._connection_timeout;
+    _p = rhs._p;
     setResponse(rhs._response);
     setRequest(rhs._request);
     return (*this);
@@ -33,7 +34,7 @@ Session &Session::operator=(const Session &rhs) {
 Session::Session(int socket_fd, Socket *server_socket, sockaddr addr) :
         _fd(socket_fd), _server_socket(server_socket), _response(nullptr), _request(nullptr), _s_addr(addr),
         _keep_alive(false),
-        _status(UNUSED), _connection_timeout() {
+        _status(UNUSED), _connection_timeout(), _p(0) {
     std::time(&_connection_timeout);
 }
 
@@ -108,34 +109,42 @@ void Session::setConnectionTimeout() {
 std::string Session::getIpFromSock() {
     return (Utils::ClientIpFromSock(&_s_addr));
 }
-
+//@todo setsockopt set min and max buffer size for send and receive
 void Session::parseRequest(long bytes) {
 //	if (bytes > Socket::DEF)
 //		bytes = DEFAULT_MAX_SIZE;
-    std::string res(bytes, 0); //@todo think about file size limit;
+    std::string res(bytes, 0);
     try {
-    	Utils::recv(bytes, _fd, res);
+    	Utils::recv(bytes, _fd, res); //@todo double copy! read directly into session buffer
+    	_buffer.insert(_buffer.end(), res.begin(), res.end());
     }
     catch (std::exception &e)
     {
     	end();
     }
+    std::cout << "printing buffer" << std::endl;
+    std::cout << _buffer;
+    std::cout << "|buffer end" << std::endl;
     size_t pos = 0;
     if (_request == nullptr)
-        _request = new HttpRequest(res, getIpFromSock(), bytes, _server_socket);
+        _request = new HttpRequest(this, getIpFromSock(), bytes);
     else if (_request->getRequestUri().empty())
-    	_request->parseRequestMessage(res, pos, _server_socket);
+    	_request->parseRequestMessage(this, pos);
     else
-        _request->appendBody(res, pos);
-    std::cout << "parsed request size " << _request->getBody().size() << std::endl;
-    std::cout << "chunked " << _request->isChunked() << std::endl;
+        _request->appendBody(this, pos);
+    if (_request->isReady())
+    	_buffer.clear();
+    if (_request->getRequestUri() == "/directory")
+    	std::cout << "x" << std::endl;
+//    std::cout << "parsed request size " << _request->getBody().size() << std::endl;
+    std::cout <<"method " << _request->getMethod() <<  " chunked " << _request->isChunked() << std::endl;
     if (!_request->getRequestUri().empty()){
     	std::map<std::string, std::string>::const_iterator it;
     	it              = _request->getHeaderFields().find("Connection");
-    	if (it != _request->getHeaderFields().end() && it->second == "keep-alive")
-    		_keep_alive = true;
-    	else
+    	if (it != _request->getHeaderFields().end() && it->second == "close")
     		_keep_alive = false;
+    	else
+    		_keep_alive = true;
     }
 }
 
@@ -181,10 +190,10 @@ bool Session::shouldClose() {
         return (true);
     time_t cur_time;
     std::time(&cur_time);
-    if (std::difftime(cur_time, _connection_timeout) > HTTP_DEFAULT_TIMEOUT) {
-        _status = TIMEOUT;
-        return (true);
-    }
+//    if (std::difftime(cur_time, _connection_timeout) > HTTP_DEFAULT_TIMEOUT) {
+//        _status = TIMEOUT;
+//        return (true);
+//    }
     return (false);
 }
 
@@ -218,5 +227,15 @@ short Session::getStatus() const {
 
 void Session::setStatus(short status) {
     _status = status;
+}
+
+const std::string &Session::getBuffer() const
+{
+	return _buffer;
+}
+
+void Session::clearBuffer(void)
+{
+	_buffer.clear();
 }
 

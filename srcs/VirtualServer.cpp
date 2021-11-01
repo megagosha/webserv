@@ -208,53 +208,40 @@ std::map<std::string, Location>::const_iterator VirtualServer::checkCgi(std::str
 	return (_locations.end());
 }
 
-std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(std::string normalized_uri) const
+
+/*
+ *  if loc is not included in path -> no match
+ * full_match path == loc return immediately
+ * other count size; choose result in the end
+ */
+
+std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(const std::string& normalized_uri) const
 {
+	std::map<std::string, Location>::const_iterator it;
+	std::map<std::string, Location>::const_iterator tmp = _locations.end();
+	size_t                                     best = 0;
+
 	if (normalized_uri.empty())
 		return (_locations.end());
-
-	unsigned long                                   i        = 0;
-	int                                             best     = 0;
-	int                                             cur_best = 0;
-	std::map<std::string, Location>::const_iterator it;
 	it     = checkCgi(normalized_uri);
 	if (it == _locations.end())
 		it = _locations.begin();
 	else
 		return (it);
-	std::map<std::string, Location>::const_iterator search_res;
 	for (; it != _locations.end(); ++it)
 	{
-		i                      = 0;
-		++cur_best;
-		std::string cur_string = it->first;
-		while (i < it->first.size())
+		if (it->first == normalized_uri || it->first == (normalized_uri + '/'))
+			return (it);
+		size_t pos = normalized_uri.find(it->first);
+		if (pos != 0)
+			continue;
+		else
 		{
-			if (i >= normalized_uri.size() || cur_string[i] != normalized_uri[i])
-				break;
-			if (cur_string[i] == '/')
-				++cur_best;
-			++i;
-		}
-		if (i == it->first.size())
-		{
-			if (i == normalized_uri.size())
-			{
-				best       = cur_best;
-				search_res = it;
-				break;
-			}
-			if (cur_best > best)
-			{
-				search_res = it;
-				best       = cur_best;
-			}
+			best = it->first.size();
+			tmp  = it;
 		}
 	}
-
-	if (best == 0)
-		return (_locations.end());
-	return (search_res);
+	return (tmp);
 }
 
 VirtualServer &VirtualServer::operator=(const VirtualServer &rhs)
@@ -299,6 +286,23 @@ VirtualServer::VirtualServer(const VirtualServer &rhs) :
 		_directory_listing_on(rhs._directory_listing_on)
 {}
 
+std::string getFullPath(const std::string &loc_path, const std::string &root, const std::string &uri)
+{
+	std::string res = uri;
+
+	size_t      pos = res.find(loc_path);
+	if (pos == std::string::npos && loc_path.size() - res.size() == 1)
+	{
+		if (*res.rbegin() != '/')
+			res += '/';
+		pos = res.find(loc_path);
+	}
+	if (pos != 0)
+		return ("");
+	res.replace(0, loc_path.size(), root);
+	return (res);
+}
+
 const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 {
 	location_it it;
@@ -315,14 +319,20 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 	if (it == _locations.end())
 		return (nullptr);
 	if (!it->second.getRoot().empty())
-		path_with_root = path.replace(0, 1, it->second.getRoot());
-	if (Utils::isDirectory(path) && !it->second.getIndex().empty())
+		path_with_root = getFullPath(it->second.getPath(), it->second.getRoot(), path);
+	if (!Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
 	{
-		index_path = path + it->second.getIndex();
+		index_path = path;
+		if (*index_path.rbegin() != '/')
+			index_path += '/' + it->second.getIndex();
+		else
+			index_path += it->second.getIndex();
+
+
 		s_it       = findRouteFromUri(index_path);
 		if (s_it != _locations.end())
 		{
-			index_path = index_path.replace(0, 1, s_it->second.getRoot());
+			index_path = getFullPath(it->second.getPath(), it->second.getRoot(), index_path);
 			if (Utils::fileExistsAndReadable(index_path))
 			{
 				req.setNormalizedPath(index_path);

@@ -19,7 +19,7 @@
 #include "HttpResponse.hpp"
 #include "Socket.hpp"
 #include "Location.hpp"
-
+#include "Session.hpp"
 enum Limits
 {
 	MAX_METHOD            = 8,
@@ -37,7 +37,7 @@ std::string &leftTrim(std::string &str, std::string chars);
 class Socket;
 
 class Location;
-
+class Session;
 class HttpRequest
 {
 private:
@@ -55,7 +55,9 @@ private:
 	bool                               _ready;
 	unsigned long                      _max_body_size;
 	uint16_t                           _parsing_error;
-	std::string                        _buffer;
+	std::string 						_chunk_length;
+	unsigned long 						_c_bytes_left;
+//	std::string							_current_chunk;
 
 public:
 	void setNormalizedPath(const std::string &normalizedPath);
@@ -85,11 +87,11 @@ public:
 	HttpRequest &operator=(const HttpRequest &rhs);
 
 	//reserve field memory
-	HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes, Socket *sock);
+	HttpRequest(Session *sess, const std::string &client_ip, unsigned long bytes);
 
-	bool parseChunked(const std::string &request, unsigned long i, long bytes);
+	bool parseChunked(Session *sess, unsigned long &pos, unsigned long bytes);
 
-	bool appendBody(std::string &buff, size_t &pos);
+	bool appendBody(Session *sess, size_t &pos);
 
 	const std::string &getMethod() const;
 
@@ -108,11 +110,11 @@ public:
 
 	const std::string &getNormalizedPath() const;
 
-	bool parseRequestLine(std::string &req, size_t &pos);
+	bool parseRequestLine(const std::string &req, size_t &pos);
 
-	bool parseHeaders(std::string &req, size_t &pos);
+	bool parseHeaders(const std::string &req, size_t &pos);
 
-	bool parseRequestMessage(std::string &request, size_t &pos, Socket *sock);
+	bool parseRequestMessage(Session *sess, size_t &pos);
 	bool processHeaders(Socket *sock);
 //	bool parseBody(std::string &request, size_t &pos, Socket *socket);
 };

@@ -31,11 +31,17 @@ private:
     short            _status;
     time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
     static const int HTTP_DEFAULT_TIMEOUT = 5;
+    std::string		_buffer;
+public:
+	const std::string &getBuffer() const;
+
+private:
+	unsigned int	_p;
     enum Status {
         UNUSED        = 1, // if keep_alive false -> do not close
         AWAIT_NEW_REQ = 2, // if keep alive true close
         READY_TO_SEND = 3, // response ready -> send
-        TIMEOUT       = 4, //should be closed with timeout;
+        TIMEOUT       = 4 //should be closed with timeout;
     };
 
 public:
@@ -99,6 +105,9 @@ public:
     void send();
 
     bool shouldClose(void);
+
+    void clearBuffer(void);
+
 };
 
 #endif //WEBSERV_SESSION_HPP
