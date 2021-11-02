@@ -20,93 +20,98 @@ class HttpRequest;
 
 class Socket;
 
-class Session {
+class Session
+{
 private:
-    int              _fd;
-    Socket           *_server_socket;
-    HttpResponse     *_response;
-    HttpRequest      *_request;
-    struct sockaddr  _s_addr;
-    bool             _keep_alive;
-    short            _status;
-    time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
-    static const int HTTP_DEFAULT_TIMEOUT = 5;
-    std::string		_buffer;
+	int              _fd;
+	Socket           *_server_socket;
+	HttpResponse     *_response;
+	HttpRequest      *_request;
+	struct sockaddr  _s_addr;
+	bool             _keep_alive;
+	short            _status;
+	time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
+	static const int HTTP_DEFAULT_TIMEOUT = 5;
+	std::string      _buffer;
 public:
 	const std::string &getBuffer() const;
 
 private:
-	unsigned int	_p;
-    enum Status {
-        UNUSED        = 1, // if keep_alive false -> do not close
-        AWAIT_NEW_REQ = 2, // if keep alive true close
-        READY_TO_SEND = 3, // response ready -> send
-        TIMEOUT       = 4 //should be closed with timeout;
-    };
+	unsigned int _p;
+	enum Status
+	{
+		UNUSED        = 1, // if keep_alive false -> do not close
+		AWAIT_NEW_REQ = 2, // if keep alive true close
+		READY_TO_SEND = 3, // response ready -> send
+		TIMEOUT       = 4 //should be closed with timeout;
+	};
 
 public:
 
-    short getStatus() const;
+	short getStatus() const;
 
-    void setStatus(short status);
+	void setStatus(short status);
 
-    int getFd() const;
+	int getFd() const;
 
-    void setFd(int fd);
+	void setFd(int fd);
 
-    Socket *getServerSocket() const;
+	Socket *getServerSocket() const;
 
-    std::string getIpFromSock();
+	std::string getIpFromSock();
 
-    void setServerSocket(Socket *serverSocket);
+	void setServerSocket(Socket *serverSocket);
 
-    const HttpResponse *getResponse() const;
+	const HttpResponse *getResponse() const;
 
-    void setResponse(const HttpResponse *response);
+	void setResponse(const HttpResponse *response);
 
-    HttpRequest *getRequest() const;
+	HttpRequest *getRequest() const;
 
-    void setRequest(HttpRequest *request);
+	void setRequest(HttpRequest *request);
 
-    bool isKeepAlive() const;
+	bool isKeepAlive() const;
 
-    void setKeepAlive(bool keepAlive);
+	void setKeepAlive(bool keepAlive);
 
-    time_t getConnectionTimeout() const;
+	time_t getConnectionTimeout() const;
 
-    void setConnectionTimeout();
+	void setConnectionTimeout();
 
-    Session();
+	Session();
 
-    Session(const Session &rhs);
+	Session(const Session &rhs);
 
-    Session &operator=(const Session &rhs);
+	Session &operator=(const Session &rhs);
 
-    Session(int i, Socket *pSocket, sockaddr sockaddr1);
+	Session(int i, Socket *pSocket, sockaddr sockaddr1);
 
-    void parseRequest(long bytes);
+	void parseRequest(long bytes);
 
-    void prepareResponse();
+	void prepareResponse();
 
-    ~Session();
+	~Session();
 
-    void end(void);
+	void end(void);
 
-    class SessionException : public std::exception {
-        const std::string m_msg;
-    public:
-        SessionException(const std::string &msg);
+	class SessionException : public std::exception
+	{
+		const std::string m_msg;
+	public:
+		SessionException(const std::string &msg);
 
-        ~SessionException() throw();
+		~SessionException() throw();
 
-        const char *what() const throw();
-    };
+		const char *what() const throw();
+	};
 
-    void send();
+	void send();
 
-    bool shouldClose(void);
+	bool shouldClose(void);
 
-    void clearBuffer(void);
+	void clearBuffer(void);
+
+	std::string &getBuffer();
 
 };
 

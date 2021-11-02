@@ -57,6 +57,7 @@ private:
 	uint16_t                           _parsing_error;
 	std::string 						_chunk_length;
 	unsigned long 						_c_bytes_left;
+	short								_skip_n;
 //	std::string							_current_chunk;
 
 public:

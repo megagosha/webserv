@@ -30,7 +30,8 @@ HttpRequest::HttpRequest() : _method(),
 							 _max_body_size(MAX_DEFAULT_BODY_SIZE),
 							 _parsing_error(0),
 							 _chunk_length(),
-							 _c_bytes_left(0)
+							 _c_bytes_left(0),
+							 _skip_n(0)
 {
 };
 
@@ -243,7 +244,7 @@ bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos)
 HttpRequest::HttpRequest(Session *sess, const std::string &client_ip, unsigned long bytes)
 		: _client_ip(
 		client_ip), _chunk_length(),
-		  _c_bytes_left(0)
+		  _c_bytes_left(0), _skip_n(0)
 {
 
 	_chunked        = false;
@@ -312,6 +313,12 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 
 	while (pos < bytes)
 	{
+		while (_skip_n > 0 && pos < bytes)
+		{
+			++pos;
+			--_skip_n;
+		}
+
 		if (_c_bytes_left == 0)
 		{
 			if (request.find("0\r\n\r\n", pos) == pos)
@@ -319,20 +326,23 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 				_ready = true;
 				return (true);
 			}
-			if (request.find("\r\n") == std::string::npos)
+			if (request.find("\r\n", pos) == std::string::npos)
+			{
+				std::string &t = sess->getBuffer();
+				t.erase(t.begin(), t.begin() + pos);
 				return (false);
+			}
 
-			while (pos < bytes && std::isxdigit(request[pos] && _chunk_length.size() < 8))
+			while (pos < bytes && isxdigit(request[pos]) && (_chunk_length.size() < 8))
 			{
 				_chunk_length += request[pos];
 				++pos;
 			}
-			if (request[pos] != ';' && request[pos] != '\r')
+			if (pos < bytes && request[pos] != ';' && request[pos] != '\r')
 			{
 				_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
 				return (true);
 			}
-			pos = request.find("\r\n", pos) + 2;
 			_c_bytes_left = strtoul(_chunk_length.data(), nullptr, 16);
 			_chunk_length.clear();
 			if (_c_bytes_left == 0)
@@ -343,11 +353,18 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 					return (true);
 				} else
 				{
-					_parsing_error = HttpResponse::HTTP_INTERNAL_SERVER_ERROR;
-					return (true);
+					std::string &tmp = sess->getBuffer();
+					tmp.erase(tmp.begin(), tmp.begin() + --pos);
+//					_parsing_error = HttpResponse::HTTP_INTERNAL_SERVER_ERROR;
+					return (false);
 				}
 			}
-
+			_skip_n += 2;
+		}
+		while (_skip_n > 0 && pos < bytes)
+		{
+			++pos;
+			--_skip_n;
 		}
 		while (_c_bytes_left > 0 && bytes > pos)
 		{
@@ -355,6 +372,9 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 			--_c_bytes_left;
 			++pos;
 		}
+		if (_c_bytes_left == 0)
+			_skip_n += 2;
+
 	}
 	if (pos == bytes)
 	{
@@ -533,7 +553,8 @@ HttpRequest::HttpRequest(
 								  _max_body_size(rhs._max_body_size),
 								  _parsing_error(rhs._parsing_error),
 								  _chunk_length(rhs._chunk_length),
-								  _c_bytes_left(rhs._c_bytes_left)
+								  _c_bytes_left(rhs._c_bytes_left),
+								  _skip_n(rhs._skip_n)
 {
 };
 

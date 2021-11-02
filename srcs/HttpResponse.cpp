@@ -26,6 +26,7 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
 HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
     const Location *loc;
     HttpRequest    *req = session.getRequest();
+    _body_size = 0;
 
     if (req->getMethod() == "POST")
     	std::cout << "!" << std::endl;
@@ -462,6 +463,8 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req) {
 std::cout << _response_string << std::endl;
     send(fd, headers_vec.data(), headers_vec.size(), 0);
     write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
+    if (req->getMethod() == "HEAD")
+    	return (EXIT_SUCCESS);
     if (_body_size > 0)
         send(fd, _body.data(), _body.size(), 0);
     if (_body_size > 0)

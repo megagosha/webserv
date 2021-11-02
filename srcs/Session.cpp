@@ -234,6 +234,11 @@ const std::string &Session::getBuffer() const
 	return _buffer;
 }
 
+std::string &Session::getBuffer()
+{
+	return _buffer;
+}
+
 void Session::clearBuffer(void)
 {
 	_buffer.clear();
