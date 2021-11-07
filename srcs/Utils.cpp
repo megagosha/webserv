@@ -3,6 +3,7 @@
 //
 #include <fstream>
 #include <netinet/in.h>
+#include <sstream>
 #include "Utils.hpp"
 
 bool Utils::fileExistsAndReadable(const std::string &name)
@@ -77,7 +78,7 @@ std::list<std::string> Utils::strTokenizer(const std::string &s, char c)
 	return (tokens);
 }
 
-std::string Utils::normalizePath(std::string s)
+std::string Utils::normalizeUri(std::string s)
 {
 	std::list<std::string>                   tokens;
 	std::list<std::string>::reverse_iterator tmp1;
@@ -238,6 +239,8 @@ char **Utils::mapToEnv(const std::map<std::string, std::string> &env)
 	int                                                     i  = 0;
 	for (std::map<std::string, std::string>::const_iterator it = env.begin(); it != env.end(); ++it)
 	{
+		if (it->second.empty())
+			continue;
 		std::string tmp = it->first + "=" + it->second;
 		res[i] = new char[tmp.size() + 1];
 		strcpy(res[i], tmp.data());
@@ -319,7 +322,56 @@ std::string Utils::getFileNameFromRequest(const std::string &path)
 		return (path.substr(pos + 1));
 }
 
+bool
+Utils::parse(const std::string &src, std::size_t &token_start, const std::string &token_delim, bool delim_exact,
+			 std::size_t max_len,
+			 std::string &token)
+{
+	token_start = src.find_first_not_of(" \t\r\n", token_start);
+	if (token_start == std::string::npos)
+		return (false);
+	std::size_t line_end = src.find_first_of("\r\n", token_start);
+	if (line_end == std::string::npos)
+		line_end = src.length();
+	std::size_t token_end = src.find_first_of(token_delim, token_start);
+	if (token_end == std::string::npos && delim_exact)
+		return false;
+	if (token_end == std::string::npos)
+		token_end = line_end;
+	token         = src.substr(token_start, token_end - token_start);
+	if (token.empty() || token.length() > max_len)
+		return (false);
+	token_start = token_end;
+	return (true);
+}
 
+size_t Utils::getContentLength(std::map<std::string, std::string> &headers)
+{
+	std::map<std::string, std::string>::iterator it;
+	size_t                                       res;
+
+	it = headers.find("Content-Length");
+	if (it == headers.end())
+		return (0);
+	res = Utils::toSizeT(it->second.data());
+	if (res == std::numeric_limits<size_t>::max())
+		return (0);
+	return (res);
+}
+
+size_t Utils::toSizeT(const char *number)
+{
+	size_t             sizeT;
+	std::istringstream iss(number);
+	iss >> sizeT;
+	if (iss.fail())
+	{
+		return std::numeric_limits<size_t>::max();
+	} else
+	{
+		return sizeT;
+	}
+}
 //int Utils::countFilesInFolder(const std::string &path) {
 //    DIR *dp;
 //    int i = 0;

@@ -30,8 +30,7 @@ Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv) :
 	addr.sin_len = sizeof(addr);
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 	{
-		close(fd);
-		throw SocketException(std::strerror(errno));
+		close(fd);throw SocketException(std::strerror(errno));
 	}
 	if (listen(fd, MAX_AWAIT_CONN) == -1)
 	{

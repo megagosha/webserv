@@ -35,28 +35,7 @@ HttpRequest::HttpRequest() : _method(),
 {
 };
 
-bool
-parse(const std::string &src, std::size_t &token_start, const std::string &token_delim, bool delim_exact,
-	  std::size_t max_len,
-	  std::string &token)
-{
-	token_start          = src.find_first_not_of(" \t\r\n", token_start);
-	if (token_start == std::string::npos)
-		return (false);
-	std::size_t line_end = src.find_first_of("\r\n", token_start);
-	if (line_end == std::string::npos)
-		line_end = src.length();
-	std::size_t token_end = src.find_first_of(token_delim, token_start);
-	if (token_end == std::string::npos && delim_exact)
-		return false;
-	if (token_end == std::string::npos)
-		token_end = line_end;
-	token         = src.substr(token_start, token_end - token_start);
-	if (token.empty() || token.length() > max_len)
-		return (false);
-	token_start = token_end;
-	return (true);
-}
+
 
 void HttpRequest::processUri(void)
 {
@@ -66,22 +45,23 @@ void HttpRequest::processUri(void)
 
 bool HttpRequest::parseRequestLine(const std::string &request, size_t &pos)
 {
-	if (!parse(request, pos, " ", true, MAX_METHOD, _method))
+	if (!Utils::parse(request, pos, " ", true, MAX_METHOD, _method))
 	{
 		_parsing_error = HttpResponse::HTTP_METHOD_NOT_ALLOWED;
 		return (false);
 	}
-	if (!parse(request, pos, " ", true, MAX_URI, _request_uri))
+	if (!Utils::parse(request, pos, " ", true, MAX_URI, _request_uri))
 	{
 		_parsing_error = HttpResponse::HTTP_REQUEST_URI_TOO_LONG;
 		return (false);
 	}
-	if (!parse(request, pos, "\r\n", false, MAX_V, _http_v) ||
+	if (!Utils::parse(request, pos, "\r\n", false, MAX_V, _http_v) ||
 		(_http_v != "HTTP/1.1" && _http_v != "HTTP/1.0"))
 	{
 		_parsing_error = HttpResponse::HTTP_VERSION_NOT_SUPPORTED;
 		return (false);
 	}
+//	_request_uri = Utils::normalizeUri(_request_uri);
 	return (true);
 }
 
@@ -97,12 +77,12 @@ bool HttpRequest::parseHeaders(const std::string &request, size_t &pos)
 			_parsing_error = HttpResponse::HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE;
 			return (false);
 		}
-		if (!parse(request, pos, ":", true, MAX_NAME, field_name))
+		if (!Utils::parse(request, pos, ":", true, MAX_NAME, field_name))
 		{
 			_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
 			return (false);
 		}
-		if (!parse(request, ++pos, "\r\n", false, MAX_VALUE, value))
+		if (!Utils::parse(request, ++pos, "\r\n", false, MAX_VALUE, value))
 		{
 			_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
 			return (false);
@@ -287,7 +267,26 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos)
 		return (parseChunked(sess, pos, buff.size()));
 	else
 	{
-		_body += buff.substr(pos, _body.size() - _content_length);
+		/*
+		 * content 25
+		 * body 10
+		 *
+		 * buff 300;
+		 *
+		 * buff > content_lenght
+		 * content_length - body.size() 25 - 10 = 15
+		 * 0 -> 14
+		 *
+		 */
+		size_t len;
+		if (buff.size() - pos + _body.size() > _content_length )
+		{
+			len = _content_length - _body.size();
+			_body.insert(_body.end(), buff.begin() + pos, buff.begin() + pos + len);
+		}
+		else
+			_body.insert(_body.end(), buff.begin() + pos, buff.end());
+//		_body += buff.substr(pos, _body.size() - _content_length);
 		if (_body.size() == _content_length)
 		{
 			std::cout << "ready to send in appendBody" << std::endl;
@@ -384,129 +383,6 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 	}
 	return (false);
 }
-//	if (_chunk == 0)
-//	{
-//		int ch = _session.get();
-//		while (Poco::Ascii::isSpace(ch)) ch = _session.get();
-//		std::string chunkLen;
-//		while (Poco::Ascii::isHexDigit(ch) && chunkLen.size() < 8) { chunkLen += (char) ch; ch = _session.get(); }
-//		if (ch != eof && !(Poco::Ascii::isSpace(ch) || ch == ';')) return eof;
-//		while (ch != eof && ch != '\n') ch = _session.get();
-//		unsigned chunk;
-//		if (NumberParser::tryParseHex(chunkLen, chunk))
-//			_chunk = (std::streamsize) chunk;
-//		else
-//			return eof;
-//	}
-//	if (_chunk > 0)
-//	{
-//		if (length > _chunk) length = _chunk;
-//		int n = _session.read(buffer, length);
-//		if (n > 0) _chunk -= n;
-//		return n;
-//	}
-//	else
-//	{
-//		int ch = _session.get();
-//		while (ch != eof && ch != '\n') ch = _session.get();
-//		return 0;
-//	}
-//
-//while (i<max_sz)
-//{
-//while (
-//i<max_sz && std::isxdigit(request[i])
-//)
-//{
-//size += request[i];
-//++
-//i;
-//}
-//if (i<max_sz && request[i] == ';')
-//{ //skip extension
-//i = request.find("\r\n", i);
-//if (i == std::string::npos)
-//{
-//std::cout << "ERRRORRRRR " <<
-//std::endl;
-//_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-//return (false);
-//}
-//}
-//i += 2; // skip \r\n
-//if (size.
-//
-//empty()
-//
-//)
-//{
-//_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-//return (false);
-//}
-//ch_size = strtoul(size.data(), nullptr, 16);
-//if (ch_size == 0)
-//{
-//if (errno == ERANGE)
-//{
-//_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
-//return (false);
-//} else if (errno == 0)
-//{
-//_ready = true;
-//return (true);
-//} else
-//{
-//_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
-//return (false);
-//}
-//}
-//if (_body.
-//
-//size()
-//
-//+ ch_size > _max_body_size)
-//{
-//_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
-//return (false);
-//}
-//std::cout << "SIZE " << ch_size <<
-//std::endl;
-//std::cout << "ch " << request[i] <<
-//std::endl;
-//while (i<max_sz && ch_size> 0)
-//{
-//_body += request[i];
-//++
-//i;
-//--
-//ch_size;
-//}
-//if (ch_size != 0)
-//{
-//_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-//return (false);
-//}
-////        _body += chunk;
-//++
-//i;
-//++
-//i;
-////        chunk.clear();
-//size.
-//
-//clear();
-//
-//std::cout <<
-//std::endl;
-//}
-//if (i == max_sz)
-//{
-//_ready = false; //wait for next request;
-//return (false);
-//}
-//_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-//return (false);
-//}
 
 const std::string &HttpRequest::getMethod() const
 {

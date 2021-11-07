@@ -152,6 +152,7 @@ void Session::prepareResponse() {
     std::string   path;
     VirtualServer *config = _server_socket->getServerByHostHeader(
             _request->getHeaderFields());
+    std::cout << "res " << config->getServerName() << std::endl;
     //@todo null check
     _response = new HttpResponse(*this, config);
     if (_keep_alive)

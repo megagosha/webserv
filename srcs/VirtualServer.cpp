@@ -215,11 +215,11 @@ std::map<std::string, Location>::const_iterator VirtualServer::checkCgi(std::str
  * other count size; choose result in the end
  */
 
-std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(const std::string& normalized_uri) const
+std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(const std::string &normalized_uri) const
 {
 	std::map<std::string, Location>::const_iterator it;
-	std::map<std::string, Location>::const_iterator tmp = _locations.end();
-	size_t                                     best = 0;
+	std::map<std::string, Location>::const_iterator tmp  = _locations.end();
+	size_t                                          best = 0;
 
 	if (normalized_uri.empty())
 		return (_locations.end());
@@ -228,6 +228,7 @@ std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(
 		it = _locations.begin();
 	else
 		return (it);
+	it = _locations.begin();
 	for (; it != _locations.end(); ++it)
 	{
 		if (it->first == normalized_uri || it->first == (normalized_uri + '/'))
@@ -290,19 +291,16 @@ std::string getFullPath(const std::string &loc_path, const std::string &root, co
 {
 	std::string res = uri;
 
-	size_t      pos = res.find(loc_path);
-	if (pos == std::string::npos && loc_path.size() - res.size() == 1)
+	if (*loc_path.begin() == '*')
 	{
-		if (*res.rbegin() != '/')
-			res += '/';
-		pos = res.find(loc_path);
+		res.replace(0, 1, root);
+		return (res);
 	}
-	if (pos != 0)
-		return ("");
-	res.replace(0, loc_path.size(), root);
+	res.replace(0, 1, root);
 	return (res);
 }
 
+//@todo complete rewrite
 const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 {
 	location_it it;
@@ -311,7 +309,7 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 	std::string path_with_root;
 	std::string index_path;
 
-	path = Utils::normalizePath(req.getUriNoQuery());
+	path = Utils::normalizeUri(req.getUriNoQuery());
 	if (path.empty())
 		return (nullptr);
 
@@ -320,6 +318,11 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 		return (nullptr);
 	if (!it->second.getRoot().empty())
 		path_with_root = getFullPath(it->second.getPath(), it->second.getRoot(), path);
+	if (!it->second.getCgiPass().empty())
+	{
+		req.setNormalizedPath(path_with_root);
+		return (&it->second);
+	}
 	if (!Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
 	{
 		index_path = path;
@@ -328,8 +331,7 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 		else
 			index_path += it->second.getIndex();
 
-
-		s_it       = findRouteFromUri(index_path);
+		s_it = findRouteFromUri(index_path);
 		if (s_it != _locations.end())
 		{
 			index_path = getFullPath(it->second.getPath(), it->second.getRoot(), index_path);

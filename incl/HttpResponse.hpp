@@ -20,6 +20,8 @@
 #include <Socket.hpp>
 #include "Session.hpp"
 #include "FileStats.hpp"
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
@@ -114,11 +116,11 @@ private:
     std::string                        _response_string;
     std::string                        _absolute_path;
 //	const VirtualServer *_serv;
-    std::map<std::string, std::string> _header;
-    std::vector<char>                  _body;
+    std::map<std::string, std::string> _response_headers;
+    std::string                _body;
     std::size_t                        _body_size;
     std::map<std::string, std::string> _cgi_env;
-    std::string                        _cgi_path;
+    std::string                        _cgi_path; //@todo should be recieved through session or other method which has access to location obj.
 //	bool _cgi;
 //	CgiHandler *_cgi_obj;
 
@@ -172,7 +174,7 @@ public:
 
     const std::map<std::string, std::string> &getHeader() const;
 
-    const std::vector<char> &getBody() const;
+    const std::string &getBody() const;
 
     void prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port);
 
@@ -191,6 +193,9 @@ public:
 
     void
     processDeleteRequest(const VirtualServer *pServer, HttpRequest *req);
+
+    bool ParseCgiHeaders(size_t end);
+
 
     void insertTableIntoBody(const std::string &str, const std::string &uri);
     void getAutoIndex(const std::string &path, const std::string &uri_path);

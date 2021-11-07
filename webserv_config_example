@@ -28,9 +28,9 @@ server {
      root /Users/megagosha/42/webserv/www/final/;
      file_upload on;
      methods POST GET DELETE PUT;
-
  }
- location /images
+
+location /images
  {
     root /Users/megagosha/42/webserv/www/final/;
     autoindex on;
@@ -38,8 +38,12 @@ server {
  }
  location *.php {
     root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-    cgi_pass /usr/local/bin/php-cgi; #IS NOT VALID CGI specify full path
+    cgi_pass /usr/local/Cellar/php@7.4/7.4.25/bin/php-cgi; #IS NOT VALID CGI specify full path
  }
+  location *.bla {
+     root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+     cgi_pass /Users/megagosha/Downloads/cgi_tester; #IS NOT VALID CGI specify full path
+  }
 }
 server {
     listen 127.0.0.1;
