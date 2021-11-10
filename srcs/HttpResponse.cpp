@@ -304,6 +304,7 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server)
 		insertHeader("Connection", "close");
 		_response_headers.erase("Keep-Alive");
 	}
+	insertHeader("Content-Type", "text/html");
 	if (!path.empty())
 	{
 		short i = writeFileToBuffer(path);
@@ -331,7 +332,7 @@ HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absol
 	_cgi_env["GATEWAY_INTERFACE"] = std::string("CGI/1.1");
 //    std::string path_info = absolute_path.substr(absolute_path.find_last_of('/') + 1);
 
-	_cgi_env["SCRIPT_NAME"]     = absolute_path;//"/Users/megagosha/Downloads/cgi_tester";//"/index.php";//request.getRequestUri();
+	_cgi_env["SCRIPT_NAME"]     = "/Users/megagosha/Downloads/cgi_tester";//"/index.php";//request.getRequestUri();
 	_cgi_env["SCRIPT_FILENAME"] = absolute_path;
 
 	_cgi_env["PATH_TRANSLATED"] = request.getRequestUri(); //@todo add additional string manipulation as in rfc
@@ -496,6 +497,9 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 
 					_body.erase(_body.begin(), v_it + 4);
 					header_parsed = true;
+					if (i < 64000 && _body.empty())
+						break;
+
 //					_body_size = Utils::getContentLength(_response_headers);
 //					if (_body_size == 0)
 //					{
@@ -545,9 +549,8 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 	}
 
 	std::cout << "CGI RESPONSE |" << _body.size() << "|end" << std::endl;
-
 	//@todo change dir back for relative path support
-	if (http_status == HTTP_OK)
+	if (http_status == HTTP_OK || (header_parsed && _body_size == 0))
 	{
 		it = _response_headers.find("Status");
 		if (it != _response_headers.end())

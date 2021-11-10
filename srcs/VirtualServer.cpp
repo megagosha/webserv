@@ -228,7 +228,7 @@ std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(
 		it = _locations.begin();
 	else
 		return (it);
-	it = _locations.begin();
+	it     = _locations.begin();
 	for (; it != _locations.end(); ++it)
 	{
 		if (it->first == normalized_uri || it->first == (normalized_uri + '/'))
@@ -300,7 +300,15 @@ std::string getFullPath(const std::string &loc_path, const std::string &root, co
 	return (res);
 }
 
-//@todo complete rewrite
+/*
+ * 1. Find location for uri
+2. Check if redirect enabled
+	return redirect instance;
+3. If CGI execute cgi
+4. If request method is put return
+5. if not found, search for index file;
+5. If found return;
+ */
 const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 {
 	location_it it;
@@ -318,33 +326,70 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 		return (nullptr);
 	if (!it->second.getRoot().empty())
 		path_with_root = getFullPath(it->second.getPath(), it->second.getRoot(), path);
+	if (!it->second.getRet().empty())
+		return (&it->second);
 	if (!it->second.getCgiPass().empty())
 	{
 		req.setNormalizedPath(path_with_root);
 		return (&it->second);
 	}
-	if (!Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
+	//file matches full path in location, does not exist and autoindex off and index on
+	if (req.getUriNoQuery() == it->second.getPath() && !Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
 	{
-		index_path = path;
-		if (*index_path.rbegin() != '/')
-			index_path += '/' + it->second.getIndex();
-		else
-			index_path += it->second.getIndex();
-
-		s_it = findRouteFromUri(index_path);
-		if (s_it != _locations.end())
-		{
-			index_path = getFullPath(it->second.getPath(), it->second.getRoot(), index_path);
-			if (Utils::fileExistsAndReadable(index_path))
-			{
-				req.setNormalizedPath(index_path);
-				return (&s_it->second);
-			}
-		}
+		index_path = it->second.getRoot() + it->second.getIndex();
+		if (Utils::fileExistsAndReadable(index_path))
+			path_with_root = index_path;
 	}
 	req.setNormalizedPath(path_with_root);
 	return (&it->second);
 }
+
+
+//@todo complete rewrite
+//const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
+//{
+//	location_it it;
+//	location_it s_it;
+//	std::string path;
+//	std::string path_with_root;
+//	std::string index_path;
+//
+//	path = Utils::normalizeUri(req.getUriNoQuery());
+//	if (path.empty())
+//		return (nullptr);
+//
+//	it = findRouteFromUri(path); //@todo add search for cgi_location
+//	if (it == _locations.end())
+//		return (nullptr);
+//	if (!it->second.getRoot().empty())
+//		path_with_root = getFullPath(it->second.getPath(), it->second.getRoot(), path);
+//	if (!it->second.getCgiPass().empty())
+//	{
+//		req.setNormalizedPath(path_with_root);
+//		return (&it->second);
+//	}
+//	if (!Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
+//	{
+//		index_path = path;
+//		if (*index_path.rbegin() != '/')
+//			index_path += '/' + it->second.getIndex();
+//		else
+//			index_path += it->second.getIndex();
+//
+//		s_it = findRouteFromUri(index_path);
+//		if (s_it != _locations.end())
+//		{
+//			index_path = getFullPath(it->second.getPath(), it->second.getRoot(), index_path);
+//			if (Utils::fileExistsAndReadable(index_path))
+//			{
+//				req.setNormalizedPath(index_path);
+//				return (&s_it->second);
+//			}
+//		}
+//	}
+//	req.setNormalizedPath(path_with_root);
+//	return (&it->second);
+//}
 
 VirtualServer::method_type VirtualServer::hashMethod(const std::string &inString)
 {
