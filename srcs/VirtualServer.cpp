@@ -334,7 +334,7 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 		return (&it->second);
 	}
 	//file matches full path in location, does not exist and autoindex off and index on
-	if (req.getUriNoQuery() == it->second.getPath() && !Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
+	if (!Utils::fileExistsAndReadable(path) && !it->second.getIndex().empty())
 	{
 		index_path = it->second.getRoot() + it->second.getIndex();
 		if (Utils::fileExistsAndReadable(index_path))
