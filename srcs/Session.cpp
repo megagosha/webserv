@@ -122,9 +122,9 @@ void Session::parseRequest(long bytes) {
     {
     	end();
     }
-    std::cout << "printing buffer" << std::endl;
-    std::cout << _buffer;
-    std::cout << "|buffer end" << std::endl;
+//    std::cout << "printing buffer size" << std::endl;
+//    std::cout << _buffer.size();
+//    std::cout << "|buffer end" << std::endl;
     size_t pos = 0;
     if (_request == nullptr)
         _request = new HttpRequest(this, getIpFromSock(), bytes);
@@ -134,10 +134,10 @@ void Session::parseRequest(long bytes) {
         _request->appendBody(this, pos);
     if (_request->isReady())
     	_buffer.clear();
-    if (_request->getRequestUri() == "/directory")
-    	std::cout << "x" << std::endl;
+//    if (_request->getRequestUri() == "/directory")
+//    	std::cout << "x" << std::endl;
 //    std::cout << "parsed request size " << _request->getBody().size() << std::endl;
-    std::cout <<"method " << _request->getMethod() <<  " chunked " << _request->isChunked() << std::endl;
+//    std::cout <<"method " << _request->getMethod() <<  " chunked " << _request->isChunked() << std::endl;
     if (!_request->getRequestUri().empty()){
     	std::map<std::string, std::string>::const_iterator it;
     	it              = _request->getHeaderFields().find("Connection");

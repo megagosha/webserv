@@ -36,7 +36,6 @@ HttpRequest::HttpRequest() : _method(),
 };
 
 
-
 void HttpRequest::processUri(void)
 {
 	_query_string = Utils::getExt(_request_uri, '?');
@@ -264,8 +263,19 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos)
 		return (false);
 	}
 	if (_chunked)
-		return (parseChunked(sess, pos, buff.size()));
-	else
+	{
+		if (parseChunked(sess, pos, buff.size()))
+		{
+			std::map<std::string, std::string>::iterator m_it = _header_fields.find("Transfer-Encoding");
+			if (m_it != _header_fields.end() && m_it->second.find("chunked") != std::string::npos)
+			{
+				_header_fields["Content-Length"] = std::to_string(_body.size());
+				_header_fields.erase(m_it);
+
+			}
+			return (true);
+		} else return (false);
+	} else
 	{
 		/*
 		 * content 25
@@ -279,12 +289,11 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos)
 		 *
 		 */
 		size_t len;
-		if (buff.size() - pos + _body.size() > _content_length )
+		if (buff.size() - pos + _body.size() > _content_length)
 		{
 			len = _content_length - _body.size();
 			_body.insert(_body.end(), buff.begin() + pos, buff.begin() + pos + len);
-		}
-		else
+		} else
 			_body.insert(_body.end(), buff.begin() + pos, buff.end());
 //		_body += buff.substr(pos, _body.size() - _content_length);
 		if (_body.size() == _content_length)
@@ -375,6 +384,7 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 			_skip_n += 2;
 
 	}
+
 	if (pos == bytes)
 	{
 		sess->clearBuffer();
@@ -404,7 +414,7 @@ bool HttpRequest::isChunked() const
 	return _chunked;
 }
 
-const std::map<std::string, std::string> &HttpRequest::getHeaderFields() const
+std::map<std::string, std::string> &HttpRequest::getHeaderFields()
 {
 	return _header_fields;
 }

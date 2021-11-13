@@ -372,6 +372,50 @@ size_t Utils::toSizeT(const char *number)
 		return sizeT;
 	}
 }
+
+void Utils::removeLocFromUri(const std::string &location, std::string &uri)
+{
+	typedef std::list<std::string>::iterator l_iter;
+
+	std::list<std::string> list_a = Utils::strTokenizer(uri, '/');
+	std::list<std::string> loc_tok = Utils::strTokenizer(location, '/');
+
+	int items_to_delete = 0;
+	l_iter it = list_a.begin();
+	for (l_iter loc_it = loc_tok.begin(); loc_it != loc_tok.end(); ++loc_it)
+	{
+		//		std::cout << "yo" << std::endl;
+		if  (it != list_a.end())
+		{
+			//			std::cout << "loc " << *loc_it << " tok " << *it << " comp " << (*it == *loc_it )<< std::endl;
+			if ( *it != "/" && *it == *loc_it)
+				++items_to_delete;
+			++it;
+		}
+		else
+			break;
+	}
+	//	std::cout << items_to_delete;
+	l_iter tmp;
+	for (it = list_a.begin(); it != list_a.end() && items_to_delete > 0; )
+	{
+		tmp = it;
+		++tmp;
+		if (*it != "/")
+			--items_to_delete;
+		list_a.erase(it);
+		it = tmp;
+	}
+	uri.clear();
+	for (it = list_a.begin(); it != list_a.end(); ++it)
+	{
+		uri += *it;
+
+	}
+	if (uri.empty())
+		uri = "/";
+	return;
+}
 //int Utils::countFilesInFolder(const std::string &path) {
 //    DIR *dp;
 //    int i = 0;

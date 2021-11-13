@@ -48,7 +48,7 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 	if (loc == nullptr)
 	{
 		setError(HTTP_NOT_FOUND, config);
-		return ;
+		return;
 	}
 	if (!loc->methodAllowed(req->getMethod()))
 	{
@@ -62,6 +62,10 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config)
 		setError(HTTP_REQUEST_ENTITY_TOO_LARGE, config);
 		return;
 	}
+	std::map<std::string, Location>::const_iterator it;
+	it      = config->checkCgi(req->getUriNoQuery());
+	if (it != config->getLocations().end())
+		loc = &it->second;
 	std::cout << "!!!Normalized path: " << req->getNormalizedPath() << std::endl;
 //	std::map<std::string, std::string>::const_iterator it = req->getHeaderFields().find("Expected");
 //	if (it != req->getHeaderFields().end() && it->second == "100-continue")
@@ -131,6 +135,8 @@ HttpResponse::processGetRequest(const VirtualServer *serv, const Location *loc, 
 			getAutoIndex(req->getNormalizedPath(), req->getUriNoQuery());
 			return;
 		}
+		setError(HTTP_NOT_FOUND, serv);
+		return;
 	}
 	HTTPStatus err = writeFileToBuffer(req->getNormalizedPath());
 	if (err == HTTP_OK)
@@ -297,7 +303,7 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server)
 
 	std::string path;
 	if (server != nullptr)
-		server->getCustomErrorPagePath(code);
+		path = server->getCustomErrorPagePath(code);
 	setResponseString("HTTP/1.1", code);
 	if (code == HTTP_REQUEST_TIMEOUT)
 	{
@@ -319,21 +325,22 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server)
 }
 
 void
-HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port)
+HttpResponse::prepareCgiEnv(HttpRequest &request, const std::string &absolute_path, const uint16_t serv_port)
 {
 	_cgi_env["AUTH_TYPE"]      = "";
 //	if (!request.getBody().empty())
 //	{
 	_cgi_env["CONTENT_LENGTH"] = std::to_string(request.getBody().size());
-	std::map<std::string, std::string>::const_iterator it = request.getHeaderFields().find("Content-Type");
+	std::map<std::string, std::string>::iterator it = request.getHeaderFields().find("Content-Type");
 	if (it != request.getHeaderFields().end())
-		_cgi_env["CONTENT_TYPE"]  = it->second;
+		_cgi_env["CONTENT_TYPE"] = it->second;
+	else
+		_cgi_env["CONTENT_TYPE"]  = "";
 //	}
 	_cgi_env["GATEWAY_INTERFACE"] = std::string("CGI/1.1");
 //    std::string path_info = absolute_path.substr(absolute_path.find_last_of('/') + 1);
-
-	_cgi_env["SCRIPT_NAME"]     = "/Users/megagosha/Downloads/cgi_tester";//"/index.php";//request.getRequestUri();
-	_cgi_env["SCRIPT_FILENAME"] = absolute_path;
+	_cgi_env["SCRIPT_NAME"]       = "/Users/megagosha/Downloads/cgi_tester";//"/index.php";//request.getRequestUri();
+	_cgi_env["SCRIPT_FILENAME"]   = absolute_path;
 
 	_cgi_env["PATH_TRANSLATED"] = request.getRequestUri(); //@todo add additional string manipulation as in rfc
 	_cgi_env["PATH_INFO"]       = request.getRequestUri();
@@ -352,6 +359,20 @@ HttpResponse::prepareCgiEnv(HttpRequest const &request, const std::string &absol
 	_cgi_env["SERVER_PORT"]     = std::to_string(serv_port); // + '\0';
 	_cgi_env["SERVER_PROTOCOL"] = "HTTP/1.1";
 	_cgi_env["SERVER_SOFTWARE"] = "topserv_v0.1";
+	std::map<std::string, std::string>           tmp_map;
+	std::map<std::string, std::string>::iterator tmp_map_iter;
+	for (it = request.getHeaderFields().begin(); it != request.getHeaderFields().end();)
+	{
+		std::string tmp = it->first;
+		std::replace(tmp.begin(), tmp.end(), '-', '_');
+		std::transform(tmp.begin(), tmp.end(), tmp.begin(), ::toupper);
+		tmp_map["HTTP_" + tmp] = it->second;
+		tmp_map_iter = it;
+		++tmp_map_iter;
+		request.getHeaderFields().erase(it);
+		it = tmp_map_iter;
+	}
+	_cgi_env.insert(tmp_map.begin(), tmp_map.end());
 	for (it = _cgi_env.begin(); it != _cgi_env.end(); ++it)
 	{
 		std::cout << it->first << ": " << it->second << std::endl;
@@ -387,7 +408,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 	int                                          fd[2];
 	char                                         **envp;
 	char                                         tmp[64001]; //store current path
-	char                                         **argv      = new char *[3];
+	char                                         **argv        = new char *[3];
 	pid_t                                        nChild;
 	int                                          status;
 	int                                          aStdinPipe[2];
@@ -395,8 +416,10 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 	int                                          nResult;
 	char                                         *str;
 	std::map<std::string, std::string>::iterator it;
-	HTTPStatus                                   http_status = HTTP_INTERNAL_SERVER_ERROR;
-	bool header_parsed = false;
+	HTTPStatus                                   http_status   = HTTP_INTERNAL_SERVER_ERROR;
+	bool                                         header_parsed = false;
+
+	std::cout << "EXEC CGI STARTED" << std::endl;
 
 	getcwd(tmp, 500);
 	std::string pwd(tmp);
@@ -447,19 +470,45 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 		close(aStdoutPipe[PIPE_READ]);
 		close(aStdoutPipe[PIPE_WRITE]);
 
+
 		nResult = execve(str, argv, envp);
-		write(open("/Users/megagosha/42/webserv/yo", O_RDWR), "lol", 3);
-		exit(nResult);
+		exit(0);
 	} else if (nChild > 0)
 	{
+		size_t j = 0;
 		Utils::clearNullArr(envp);
 		close(aStdinPipe[PIPE_READ]);
 		std::cout << "request body size " << req->getBody().size() << std::endl;
+		std::string fileName = "/Users/megagosha/42/webserv/test.txt";
+		std::fstream file;
+
+		file.open(fileName, std::ios::in | std::ios::out);
 		if (!req->getBody().empty())
 		{
-			write(aStdinPipe[PIPE_WRITE], req->getBody().data(), req->getBody().size());
+			size_t max     = 64000;
+			size_t wrote   = 0;
+			size_t r_write = 0;
+			while (wrote < req->getBody().size())
+			{
+				if (req->getBody().size() - wrote > max + wrote)
+				{
+					r_write = write(aStdinPipe[PIPE_WRITE], req->getBody().data() + wrote, 64000);
+				}
+				else
+					r_write = write(aStdinPipe[PIPE_WRITE], req->getBody().data() + wrote,
+									req->getBody().size() - wrote);
+				if (r_write < 0)
+					return (HTTP_INTERNAL_SERVER_ERROR);
+				wrote += r_write;
+				r_write     = 0;
+			}
+
+//
+//
+////			j = write(aStdinPipe[PIPE_WRITE], req->getBody().data(), req->getBody().size());
+//			std::cout << j << std::endl;
 		} else
-			write(aStdinPipe[PIPE_WRITE], "\r\n\r\n", 4);
+			j = write(aStdinPipe[PIPE_WRITE], "\r\n\r\n", 4);
 
 		close(aStdoutPipe[PIPE_WRITE]);
 		//buffer size is limited. so we should try reading while child process is alive;
@@ -480,7 +529,6 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 				continue;
 			else if (res.second[0].filter == EVFILT_READ)
 			{
-
 				i = read(aStdoutPipe[PIPE_READ], &tmp, 64000);
 				if (i > 0 && !header_parsed)
 				{
@@ -518,7 +566,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 				if (i == 0)
 				{
 					http_status = HTTP_OK;
-					_body_size = _body.size();
+					_body_size  = _body.size();
 					break;
 				}
 //				if (_body_size == _body.size())
@@ -558,8 +606,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req)
 			http_status = static_cast<HTTPStatus>(atoi(it->second.data()));
 			_response_headers.erase("Status");
 		}
-		if (_body_size != 0)
-			_response_headers["Content-Length"] = std::to_string(_body_size);
+		_response_headers["Content-Length"] = std::to_string(_body_size);
 	}
 	return (http_status);
 }
@@ -570,6 +617,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 	std::vector<char>                            headers_vec;
 
 //	if (req->getParsingError() == 0)
+
 
 	if (!_cgi_path.empty() && req != nullptr)
 	{
@@ -583,7 +631,8 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 			_cgi_path.clear();
 		}
 	}
-	insertHeader("Content-Length", std::to_string(_body.size()));
+	insertHeader("Content-Length", std::to_string(_body_size));
+
 //		const char                  *h_end = "\r\n\r\n";
 //		std::vector<char>::iterator v_it;
 //		v_it = std::search(_body.begin(), _body.end(), h_end, h_end + 4);
@@ -604,8 +653,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 	setTimeHeader();
 
 	headers_vec.reserve(500);
-	headers_vec.
-			insert(headers_vec.begin(), _response_string.begin(), _response_string.end());
+	headers_vec.insert(headers_vec.begin(), _response_string.begin(), _response_string.end());
 	for (it = _response_headers.begin(); it != _response_headers.end(); ++it)
 	{
 		headers_vec.insert(headers_vec.end(), it->first.begin(), it->first.end());
@@ -622,13 +670,10 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 //	if (_body_size > 0)
 //		write(STDOUT_FILENO, _body.data(), _body.size());
 
-	FILE *fptr = fopen("/Users/megagosha/Desktop/test.txt", "wb");
-	std::cout << _response_string <<
-			  std::endl;
+
 	send(fd, headers_vec.data(), headers_vec.size(), 0);
-	size_t t = write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
-	std::cout << t << std::endl;
-	fwrite(headers_vec.data(), 1, headers_vec.size(), fptr);
+	write(STDOUT_FILENO, headers_vec.data(), headers_vec.size());
+
 	if (req->getMethod() == "HEAD")
 		return (EXIT_SUCCESS);
 //	if (_body_size > 0)
@@ -637,25 +682,22 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req)
 	int    i          = 1;
 	size_t bytes_sent = 0;
 
-	while (i > 0)
+	while (i > 0 && _body_size > 0)
 	{
 		i = send(fd, _body.data() + bytes_sent, _body_size - bytes_sent, 0);
-		fwrite(_body.data() + bytes_sent, 1, _body_size - bytes_sent, fptr);
+		write(STDOUT_FILENO, _body.data() + bytes_sent, _body_size - bytes_sent);
 		if (i <= 0)
 			break;
-		bytes_sent +=
-				i;
+		bytes_sent += i;
 		if (bytes_sent >= _body_size)
 			break;
 	}
-
-	fclose(fptr);
-	if (_body_size > 0)
-	{
-		std::cout << "BODY START" << std::endl;
-		write(STDOUT_FILENO, _body.data(), _body.size());
-		std::cout << "| BODY END" << std::endl;
-	}
+//	if (_body_size > 0)
+//	{
+//		std::cout << "BODY START" << std::endl;
+//		write(STDOUT_FILENO, _body.data(), _body.size());
+//		std::cout << "| BODY END" << std::endl;
+//	}
 	return (EXIT_SUCCESS);
 }
 

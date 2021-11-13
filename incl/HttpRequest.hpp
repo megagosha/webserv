@@ -103,7 +103,7 @@ public:
 
 	bool isChunked() const;
 
-	const std::map<std::string, std::string> &getHeaderFields() const;
+	std::map<std::string, std::string> &getHeaderFields();
 
 	const std::string &getBody() const;
 

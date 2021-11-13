@@ -176,7 +176,7 @@ public:
 
     const std::string &getBody() const;
 
-    void prepareCgiEnv(HttpRequest const &request, const std::string &absolute_path, const uint16_t serv_port);
+    void prepareCgiEnv(HttpRequest &request, const std::string &absolute_path, const uint16_t serv_port);
 
     size_t getBodySize() const;
 

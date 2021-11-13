@@ -80,6 +80,8 @@ public:
 	static size_t getContentLength(std::map<std::string, std::string> &headers);
 	static size_t toSizeT(const char *number);
 
+	static void removeLocFromUri(const std::string &location, std::string &uri);
+
 };
 
 #endif
