@@ -6,6 +6,7 @@
 
 HttpResponse::HttpResponse() {
     _cgi = nullptr;
+    _pos = 0;
 }
 
 HttpResponse::~HttpResponse() {
@@ -16,6 +17,7 @@ HttpResponse::~HttpResponse() {
 //error response constructor
 HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
     _cgi = nullptr;
+    _pos = 0;
     setError(code, server);
 }
 
@@ -32,6 +34,7 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
     HttpRequest    *req = session.getRequest();
     _cgi       = nullptr;
     _body_size = 0;
+    _pos = 0;
 
     if (req->getMethod() == "POST")
         std::cout << "!" << std::endl;
@@ -101,7 +104,8 @@ HttpResponse::HttpResponse(const HttpResponse &rhs) :
         _body(rhs._body),
         _body_size(rhs._body_size),
         _cgi(rhs._cgi),
-        _headers_vec(rhs._headers_vec)
+        _headers_vec(rhs._headers_vec),
+        _pos(rhs._pos)
 //        _cgi_env(rhs._cgi_env),
 //_cgi_path(rhs._cgi_path)
 {
@@ -119,6 +123,7 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
     _body_size        = rhs.getBodySize();
     _cgi              = rhs._cgi;
    _headers_vec = rhs._headers_vec;
+   _pos = rhs._pos;
 //    _cgi_path = rhs._cgi_path;
     return (*this);
 }
@@ -572,7 +577,7 @@ void HttpResponse::prepareData() {
 int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
 
     size_t pos;
-    size_t data_to_send;
+    size_t data_to_send = 0;
     int    res;
 
     if (_headers_vec.empty())

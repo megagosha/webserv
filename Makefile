@@ -9,7 +9,8 @@ SRC_FILES	= check.cpp \
 				VirtualServer.cpp \
 				MimeType.cpp \
 				Session.cpp \
-				FileStats.cpp
+				FileStats.cpp \
+				CgiHandler.cpp
 
 
 NAME	= webserv

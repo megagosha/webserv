@@ -13,7 +13,6 @@
 #include <iostream>
 #include<fstream>
 #include "CgiHandler.hpp"
-#include "ISubscriber.hpp"
 #include <fstream>
 #include <vector>
 #include <string>
@@ -41,7 +40,7 @@ class Socket;
 
 class CgiHandler;
 
-class HttpResponse : public ISubscriber {
+class HttpResponse {
 public:
     static const std::string AUTOINDEX_HTML;
     enum HTTPStatus {
@@ -122,9 +121,10 @@ private:
     std::map<std::string, std::string> _response_headers;
     std::string                        _body;
     std::size_t                        _body_size;
-    size_t                             _pos;
     CgiHandler                         *_cgi;
     std::vector<char>                  _headers_vec;
+    size_t                             _pos;
+
 
 public:
     CgiHandler *getCgi() const;
@@ -136,8 +136,6 @@ public:
 //	CgiHandler *_cgi_obj;
 
 public:
-    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
-
     void setResponseString(const std::string &pr, HTTPStatus status);
 
     HTTPStatus writeFileToBuffer(const std::string &file_path);
@@ -167,7 +165,7 @@ public:
 
 //	const Location *getLoc() const;
 
-    virtual ~HttpResponse();
+    ~HttpResponse();
 
 //	bool isCgi() const;
 

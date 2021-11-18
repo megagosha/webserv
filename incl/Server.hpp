@@ -62,14 +62,14 @@
 class Socket;
 class VirtualServer;
 class Server : public IManager {
-    typedef std::map<int, Socket>::iterator iter;
+//    typedef std::map<int, *Socket>::iterator iter;
 //std::map<int, Session *> _cgi_pipe_fd, session;
 private:
-    std::map<int, Socket>        _sockets; // <socket fd, socket obj>
+    std::map<int, Socket *>        _sockets; // <socket fd, socket obj>
     std::map<int, Session *> _sessions;
 //    std::map<int, Session *> _cgi_pipes;
     std::map<int,  ISubscriber *> _subs;
-    std::set<int>                _pending_sessions;
+//    std::set<int>                _pending_sessions;
     std::list<std::string>       _tok_list;
     KqueueEvents                 _kq;
 
@@ -90,7 +90,7 @@ public:
 
     virtual void subscribe(int fd, short type, ISubscriber *obj);
 
-    virtual void unsubscribe(int fd, short type, ISubscriber *obj);
+    virtual void unsubscribe(int fd, int16_t type);
 
     _Noreturn virtual void loop();
 
@@ -110,9 +110,15 @@ public:
         const char *what() const throw();
     };
 
-    void prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes);
+    void monitorSession(int fd, Session *sess);
 
-    void acceptConnection(std::map<int, Socket>::iterator it);
+    void removeExpiredSessions();
+
+    void removeSession(int fd);
+
+//    void prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes);
+//
+//    void acceptConnection(std::map<int, Socket>::iterator it);
 
     void closeConnection(int cur_fd);
 

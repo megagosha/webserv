@@ -16,8 +16,8 @@ const char *Server::ServerException::what() const throw() {
 
 //@todo create destructor
 Server::~Server() {
-    for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
-        it->second.clear();
+    for (std::map<int, Socket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
+        it->second->clear();
     }
 }
 
@@ -70,47 +70,47 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
             ++it;
             //@todo THROW ERROR if nothing else worked
         }
-        MimeType("/Users/megagosha/42/webserv/mime.conf"); //@todo put mime path to config
+        MimeType("/Users/edebi/Desktop/webserv/mime.conf"); //@todo put mime path to config
         validate(serv);
         apply(serv);
     }
-    for (std::map<int, Socket>::iterator ity = _sockets.begin(); ity != _sockets.end(); ++ity) {
-        std::cout << "Socket created on fd " << ity->first << " internal " << ity->second.getSocketFd() << std::endl;
+    for (std::map<int, Socket*>::iterator ity = _sockets.begin(); ity != _sockets.end(); ++ity) {
+        std::cout << "Socket created on fd " << ity->first << " internal " << ity->second->getSocketFd() << std::endl;
     }
     Server::loop();
 }
 
 
-void Server::acceptConnection(std::map<int, Socket>::iterator it) {
-    std::pair<int, Session *> session;
+//void Server::acceptConnection(std::map<int, Socket>::iterator it) {
+//    std::pair<int, Session *> session;
+//
+//    session = it->second.acceptConnection();
+//    _sessions.insert(session);
+//    _kq.addFd(session.first, true);
+//}
 
-    session = it->second.acceptConnection();
-    _sessions.insert(session);
-    _kq.addFd(session.first, true);
-}
-
-void Server::prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes) {
-    if (sess_iter == _sessions.end()) {
-        std::cout << "Should never happend" << std::endl;
-        return;
-    }
-    sess_iter->second->parseRequest(bytes);
-
-    if (sess_iter->second->getRequest()->isReady()) {
-        sess_iter->second->prepareResponse();
-        if (sess_iter->second->getStatus() == Session::PIPE_TO_CGI) {
-            watchPipe(sess_iter->second, true);
-//            _cgi_pipes.insert(
-//                    std::map<int, Session *>::value_type(
-//                            sess_iter->second->getResponse()->getCgi()->getRequestPipe(), sess_iter->second));
-//            if (sess_iter->second->writeCgi())
-//                _pending_sessions.insert(sess_iter->first);
-        } else if (sess_iter->second->getStatus() == Session::READ_FROM_CGI)
-            watchPipe(sess_iter->second, false);
-        else
-            _pending_sessions.insert(sess_iter->first);
-    }
-}
+//void Server::prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes) {
+//    if (sess_iter == _sessions.end()) {
+//        std::cout << "Should never happend" << std::endl;
+//        return;
+//    }
+//    sess_iter->second->parseRequest(bytes);
+//
+//    if (sess_iter->second->getRequest()->isReady()) {
+//        sess_iter->second->prepareResponse();
+//        if (sess_iter->second->getStatus() == Session::PIPE_TO_CGI) {
+//            watchPipe(sess_iter->second, true);
+////            _cgi_pipes.insert(
+////                    std::map<int, Session *>::value_type(
+////                            sess_iter->second->getResponse()->getCgi()->getRequestPipe(), sess_iter->second));
+////            if (sess_iter->second->writeCgi())
+////                _pending_sessions.insert(sess_iter->first);
+//        } else if (sess_iter->second->getStatus() == Session::READ_FROM_CGI)
+//            watchPipe(sess_iter->second, false);
+//        else
+//            _pending_sessions.insert(sess_iter->first);
+//    }
+//}
 
 void Server::closeConnection(int cur_fd) {
     std::map<int, Session *>::iterator sess_iter;
@@ -120,7 +120,7 @@ void Server::closeConnection(int cur_fd) {
         throw ServerException("invalid fd in close connection");
     sess_iter->second->end();
     _sessions.erase(cur_fd);
-    _pending_sessions.erase(cur_fd);
+//    _pending_sessions.erase(cur_fd);
     _kq.deleteFd(cur_fd, true);
 }
 //
@@ -316,25 +316,27 @@ bool Server::validate(const VirtualServer &server) {
 }
 
 void Server::apply(VirtualServer &serv) {
-    for (std::map<int, Socket>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
-        if (serv.getHost() == it->second.getIp() && serv.getPort() == it->second.getPort()) {
-            it->second.appendVirtualServer(serv);
+    for (std::map<int, Socket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
+        if (serv.getHost() == it->second->getIp() && serv.getPort() == it->second->getPort()) {
+            it->second->appendVirtualServer(serv);
             return;
         }
     }
-    Socket                               sock(serv.getHost(), serv.getPort(), serv, this);
-    _sockets.insert(std::make_pair(sock.getSocketFd(), sock));
+//    Socket                               sock(serv.getHost(), serv.getPort(), serv, this);
+    Socket *sock = new  Socket(serv.getHost(), serv.getPort(), serv, this);
+//    std::make_pair(sock->getSocketFd(), sock)
+    _sockets.insert(std::map<int, Socket*>::value_type(sock->getSocketFd(), sock));
 }
 
 
 Server &Server::operator=(const Server &rhs) {
     if (this == &rhs)
         return (*this);
-    _sockets          = rhs._sockets;
-    _sessions         = rhs._sessions;
-    _pending_sessions = rhs._pending_sessions;
-    _tok_list         = rhs._tok_list;
-    _kq               = rhs._kq;
+    _sockets  = rhs._sockets;
+    _sessions = rhs._sessions;
+//    _pending_sessions = rhs._pending_sessions;
+    _tok_list = rhs._tok_list;
+    _kq       = rhs._kq;
     return (*this);
 }
 
@@ -342,7 +344,7 @@ Server::Server(
         const Server &rhs) :
         _sockets(rhs._sockets),
         _sessions(rhs._sessions),
-        _pending_sessions(rhs._pending_sessions),
+//        _pending_sessions(rhs._pending_sessions),
         _tok_list(rhs._tok_list),
         _kq(rhs._kq) {}
 
@@ -351,10 +353,32 @@ void Server::subscribe(int fd, short type, ISubscriber *obj) {
     _subs.insert(std::map<int, ISubscriber *>::value_type(fd, obj));
 }
 
-void Server::unsubscribe(int fd, short type, ISubscriber *obj) {
+void Server::unsubscribe(int fd, int16_t type) {
     _kq.deleteFd(fd, type);
-    _subs.erase(fd);
+//    if (type == EVFILT_WRITE && _sessions.find(fd) == _sessions.end())
+        _subs.erase(fd);
 //    _pending_sessions.erase(fd);
+}
+
+void Server::removeSession(int fd)
+{
+    _sessions.erase(fd);
+    _subs.erase(fd);
+}
+
+
+
+void Server::removeExpiredSessions() {
+    std::vector<int> to_delete;
+    to_delete.reserve(_sessions.size());
+    for (std::map<int, Session *>::iterator sess_it = _sessions.begin(); sess_it != _sessions.end(); ++sess_it) {
+        if (sess_it->second->shouldClose()) {
+            sess_it->second->end();
+            to_delete.push_back(sess_it->first);
+        }
+    }
+    for (std::vector<int>::iterator         vec_it  = to_delete.begin(); vec_it != to_delete.end(); ++vec_it)
+        _sessions.erase(*vec_it);
 }
 
 _Noreturn void Server::loop() {
@@ -375,16 +399,24 @@ _Noreturn void Server::loop() {
             cur_fd          = updates.second[i].ident;
             flags           = updates.second[i].flags;
             bytes_available = updates.second[i].data;
-
-            it->second->processEvent(cur_fd, bytes_available, filter, (flags & EV_EOF), this);
+            if (it == _subs.end())
+                std::cout << "SHOULD NEVER HAPPEND TYPE OF ERROR" << std::endl;
+            else
+                it->second->processEvent(cur_fd, bytes_available, filter, (flags & EV_EOF), this);
             ++i;
         }
+        removeExpiredSessions();
+
     }
 
 }
 
 void Server::addSession(std::pair<int, Session *> pair) {
     _sessions.insert(pair);
+}
+
+void Server::monitorSession(int fd, Session *sess) {
+    _sessions.insert(std::map<int, Session *>::value_type(fd, sess));
 }
 
 

@@ -139,7 +139,7 @@ char **CgiHandler::getEnv(void) {
         strcpy(res[i], tmp.data());
         ++i;
     }
-    res[i]     = nullptr;
+    res[i]                                                     = nullptr;
     return (res);
 }
 
@@ -168,3 +168,27 @@ CgiHandler::CgiHandler() :
         _headers_parsed(false) {
 }
 
+
+bool CgiHandler::cgiEnd() {
+    int res;
+    res = waitpid(_cgi_pid, &_exit_status, WNOHANG);
+    if (res == -1)
+        throw CgiException("waitpid returned -1");
+    else if (res == 0)
+        kill(_cgi_pid, SIGKILL);
+    else if (WIFEXITED(_exit_status) && WEXITSTATUS(_exit_status) == 0)
+        return (true);
+    return (false);
+}
+
+CgiHandler::CgiException::CgiException(const std::string &msg) {
+    std::cout << msg << std::endl;
+}
+
+CgiHandler::CgiException::~CgiException() throw() {
+
+}
+
+const char *CgiHandler::CgiException::what() const throw() {
+    return exception::what();
+}

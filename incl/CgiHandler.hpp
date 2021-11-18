@@ -49,6 +49,7 @@ public:
 
     void setHeadersParsed(bool);
 
+    bool cgiEnd();
 
     class CgiException : public std::exception {
         const std::string m_msg;
@@ -86,6 +87,7 @@ private:
     size_t                             _pos;
     std::map<std::string, std::string> _env;
     std::string                        _cgi_path;
+    int                                _exit_status;
     bool                               _headers_parsed;
 };
 

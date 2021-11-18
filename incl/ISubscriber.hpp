@@ -9,9 +9,7 @@
 class Server;
 class ISubscriber {
 public:
-    virtual ~ISubscriber() = 0;
+    virtual ~ISubscriber() {};
     virtual void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv) = 0;
-    virtual bool shouldClose() = 0;
-
 };
 #endif //WEBSERV_ISUBSCRIBER_HPP

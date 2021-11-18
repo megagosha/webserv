@@ -21,6 +21,7 @@ class HttpResponse;
 class HttpRequest;
 
 class Socket;
+class ISubscriber;
 
 class Session : public ISubscriber {
 private:
@@ -43,12 +44,30 @@ public:
         PIPE_TO_CGI   = 2,
         READ_FROM_CGI = 3,
         SENDING       = 4,// response ready -> send
-        TIMEOUT       = 5 //should be closed with timeout;
+        TIMEOUT       = 5,//should be closed with timeout;
+        CLOSING       = 6
     };
 
 public:
-    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+
+    Session();
+
+    Session(const Session &rhs);
+
+    Session &operator=(const Session &rhs);
+
+    Session(int i, Socket *pSocket, sockaddr sockaddr1, IManager *mng);
+
+    virtual     ~Session();
+
+    virtual void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+
+    void processCurrentStatus(short status);
+
+    void processPreviousStatus(short prev_status);
+
     bool shouldClose();
+
     short getStatus() const;
 
     void setStatus(short status);
@@ -83,19 +102,11 @@ public:
 
     bool readCgi(size_t bytes, bool eof);
 
-    Session();
-
-    Session(const Session &rhs);
-
-    Session &operator=(const Session &rhs);
-
-    Session(int i, Socket *pSocket, sockaddr sockaddr1, IManager *mng);
 
     void parseRequest(size_t bytes);
 
     void prepareResponse();
 
-    ~Session();
 
     void end(void);
 

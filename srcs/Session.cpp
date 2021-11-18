@@ -36,6 +36,7 @@ Session::Session(int socket_fd, Socket *server_socket, sockaddr addr, IManager *
         _keep_alive(false),
         _status(AWAIT_NEW_REQ), _connection_timeout(), _mng(mng) {
     std::time(&_connection_timeout);
+    mng->subscribe(socket_fd, EVFILT_READ, this);
 }
 
 Session::~Session(void) {
@@ -147,6 +148,7 @@ void Session::parseRequest(size_t bytes) {
         else
             _keep_alive = true;
     }
+    std::time(&_connection_timeout);
 }
 
 void Session::prepareResponse() {
@@ -175,22 +177,25 @@ bool Session::writeCgi(size_t bytes, bool eof) {
         _status = READ_FROM_CGI;
     } else if (_response->writeToCgi(_request, bytes))
         _status = READ_FROM_CGI;
-    else if (_response->getStatusCode() == HttpResponse::HTTP_INTERNAL_SERVER_ERROR)
+    else if (_response->getStatusCode() == HttpResponse::HTTP_INTERNAL_SERVER_ERROR) {
+        _response->getCgi()->cgiEnd();
         _status = SENDING;
+    }
     else return (false);
 
-    if (_status == READ_FROM_CGI)
-        _mng->subscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ, this);
-    else
-        _mng->subscribe(_fd, EVFILT_WRITE, this);
+//    if (_status == READ_FROM_CGI)
+//        _mng->subscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ, this);
+//    else
+//        _mng->subscribe(_fd, EVFILT_WRITE, this);
     return (true);
 }
 
 bool Session::readCgi(size_t bytes, bool eof) {
     if (_response->readCgi(bytes, eof)) {
+        if (!_response->getCgi()->cgiEnd())
+            _response->setError(HttpResponse::HTTP_INTERNAL_SERVER_ERROR, nullptr);
         std::cout << "READY TO SEND CGI RESPONSE" << std::endl;
         _status = SENDING;
-
         return (true);
     } else
         return (false);
@@ -204,7 +209,7 @@ bool Session::readCgi(size_t bytes, bool eof) {
 
 bool Session::shouldClose() {
 
-    if (!isKeepAlive() && _status == AWAIT_NEW_REQ)
+    if (!isKeepAlive() && _status != AWAIT_NEW_REQ)
         return (true);
     time_t cur_time;
     std::time(&cur_time);
@@ -219,25 +224,26 @@ void Session::end() {
     std::cout << "Session closed" << std::endl;
     if (_status == TIMEOUT) {
         _response = new HttpResponse(HttpResponse::HTTP_REQUEST_TIMEOUT, _server_socket->getDefaultConfig());
-        _response->sendResponse(_fd, nullptr);
+//        _response->sendResponse(_fd, nullptr);
     }
+    processPreviousStatus(_status);
     close(_fd);
     _server_socket->removeSession(_fd);
 }
 
-void Session::send() {
-    _response->sendResponse(_fd, _request);
-    _status = AWAIT_NEW_REQ;
-    time(&_connection_timeout);
-    if (_response != nullptr) {
-        delete _response;
-        _response = nullptr;
-    }
-    if (_request != nullptr) {
-        delete _request;
-        _request = nullptr;
-    }
-}
+//void Session::send() {
+//    _response->sendResponse(_fd, _request);
+//    _status = AWAIT_NEW_REQ;
+//    time(&_connection_timeout);
+//    if (_response != nullptr) {
+//        delete _response;
+//        _response = nullptr;
+//    }
+//    if (_request != nullptr) {
+//        delete _request;
+//        _request = nullptr;
+//    }
+//}
 
 short Session::getStatus() const {
     return _status;
@@ -259,64 +265,87 @@ void Session::clearBuffer(void) {
     _buffer.clear();
 }
 
-void Session::processResponse(size_t bytes)
-{
-    if (_response->sendResponse(_fd, _request, bytes) == 1)
-    {
-        _status = AWAIT_NEW_REQ;
-        if (_request != nullptr)
-        {
+void Session::processResponse(size_t bytes) {
+    if (_response->sendResponse(_fd, _request, bytes) == 1) {
+        if (_keep_alive == false)
+            _status = CLOSING;
+        else
+            _status = AWAIT_NEW_REQ;
+        if (_request != nullptr) {
             delete _request;
             _request = nullptr;
         }
-        if (_response != nullptr)
-        {
+        if (_response != nullptr) {
             delete _response;
             _response = nullptr;
         }
     }
 }
-void Session::processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv) {
+
+void Session::processCurrentStatus(short status) {
+    if (status == AWAIT_NEW_REQ)
+        _mng->subscribe(_fd, EVFILT_READ, this);
+    if (status == PIPE_TO_CGI) {
+        _mng->subscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE, this);
+        return;
+    }
+    if (status == READ_FROM_CGI) {
+        _mng->subscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ, this);
+        return;
+    }
+    if (status == SENDING) {
+        _mng->subscribe(_fd, EVFILT_WRITE, this);
+        return;
+    }
+    if (status == CLOSING)
+    {
+        _mng->unsubscribe(_fd, EVFILT_READ);
+        end();
+    }
+}
+
+void Session::processPreviousStatus(short prev_status) {
+    if (prev_status == AWAIT_NEW_REQ)
+        _mng->unsubscribe(_fd, EVFILT_READ);
+    else if (prev_status == PIPE_TO_CGI) {
+        _mng->unsubscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE);
+        return;
+    }
+    else if (prev_status == READ_FROM_CGI) {
+        _mng->unsubscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ);
+        return;
+    }
+    else if (prev_status == SENDING) {
+        _mng->unsubscribe(_fd, EVFILT_WRITE);
+        return;
+    }
+}
+
+void Session::processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, __attribute__((unused)) Server *serv) {
     //@todo
     short prev_status = _status;
-    do {
-        if (_status == AWAIT_NEW_REQ && filter == EVFILT_READ) {
-            parseRequest(bytes_available);
-            if (_request->isReady())
-                prepareResponse();
-            break;
-        }
-        if (_status == PIPE_TO_CGI && filter == EVFILT_WRITE && fd == _response->getCgi()->getRequestPipe()) {
-            writeCgi(bytes_available, eof);
-            break;
-        }
-        if (_status == READ_FROM_CGI && filter == EVFILT_READ && fd == _response->getCgi()->getResponsePipe()) {
-            readCgi(bytes_available, eof);
-            break;
-        }
-        if (_status == SENDING) {
-
-        }
-
-    } while (false);
-
+    if (bytes_available == 0 && eof && fd == _fd)
+        end();
+    else if (_status == AWAIT_NEW_REQ && filter == EVFILT_READ && fd == _fd) {
+        parseRequest(bytes_available);
+        if (_request->isReady())
+            prepareResponse();
+    } else if (_status == PIPE_TO_CGI && filter == EVFILT_WRITE && fd == _response->getCgi()->getRequestPipe()) {
+        writeCgi(bytes_available, eof);
+    } else if (_status == READ_FROM_CGI && filter == EVFILT_READ && fd == _response->getCgi()->getResponsePipe()) {
+        readCgi(bytes_available, eof);
+    } else if (_status == SENDING && fd == _fd) {
+        processResponse(bytes_available);
+    }
+    else if (_fd == fd && eof) {
+        _status = CLOSING;
+    }
     //@todo create two functions sub and unsub. split everything
-
-    if (_status == AWAIT_NEW_REQ)
-            _mng->subscribe(_fd, EVFILT_READ, this);
+//    if (_status == AWAIT_NEW_REQ)
+//        _mng->subscribe(_fd, EVFILT_READ, this);
     if (prev_status != _status) {
-        if (prev_status == PIPE_TO_CGI)
-            _mng->unsubscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE, this);
-        if (_status == PIPE_TO_CGI)
-            _mng->subscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE, this);
-        if (_status == READ_FROM_CGI)
-            _mng->subscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ, this);
-        if (prev_status == READ_FROM_CGI)
-            _mng->unsubscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ, this);
-        if (_status == SENDING)
-            _mng->subscribe(_fd, EVFILT_WRITE, this);
-        if (prev_status == SENDING)
-            _mng->unsubscribe(_fd, EVFILT_WRITE, this);
+        processPreviousStatus(prev_status);
+        processCurrentStatus(_status);
     }
 }
 
