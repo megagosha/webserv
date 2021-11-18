@@ -12,7 +12,8 @@
 #include <map>
 #include <iostream>
 #include<fstream>
-
+#include "CgiHandler.hpp"
+#include "ISubscriber.hpp"
 #include <fstream>
 #include <vector>
 #include <string>
@@ -38,7 +39,9 @@ class Location;
 
 class Socket;
 
-class HttpResponse {
+class CgiHandler;
+
+class HttpResponse : public ISubscriber {
 public:
     static const std::string AUTOINDEX_HTML;
     enum HTTPStatus {
@@ -117,15 +120,25 @@ private:
     std::string                        _absolute_path;
 //	const VirtualServer *_serv;
     std::map<std::string, std::string> _response_headers;
-    std::string                _body;
+    std::string                        _body;
     std::size_t                        _body_size;
-    std::map<std::string, std::string> _cgi_env;
-    std::string                        _cgi_path; //@todo should be recieved through session or other method which has access to location obj.
-//	bool _cgi;
+    size_t                             _pos;
+    CgiHandler                         *_cgi;
+    std::vector<char>                  _headers_vec;
+
+public:
+    CgiHandler *getCgi() const;
+//    std::map<std::string, std::string> _cgi_env;
+//    std::string                        _cgi_path; //@todo should be recieved through session or other method which has access to location obj.
+//    pid_t            _cgi_num;
+
+    //	bool _cgi;
 //	CgiHandler *_cgi_obj;
 
 public:
-    void setResponseString(const std::string& pr, HTTPStatus status);
+    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+
+    void setResponseString(const std::string &pr, HTTPStatus status);
 
     HTTPStatus writeFileToBuffer(const std::string &file_path);
 
@@ -137,10 +150,13 @@ public:
 
     void setError(HTTPStatus code, const VirtualServer *server);
 
-
     HttpResponse(HTTPStatus code, const VirtualServer *server); //error page constructor
 
     HttpResponse();
+
+    bool writeToCgi(HttpRequest *req, size_t bytes);
+
+    bool readCgi(size_t bytes, bool eof);
 
 //	HttpResponse(const HttpRequest &request, const Socket *sock, const VirtualServer *ptr);
 
@@ -162,7 +178,7 @@ public:
 
     HttpResponse &operator=(const HttpResponse &rhs);
 
-    int sendResponse(int fd, HttpRequest *req);
+    int sendResponse(int fd, HttpRequest *req, size_t bytes);
 
     const std::string &getProto() const;
 
@@ -176,7 +192,7 @@ public:
 
     const std::string &getBody() const;
 
-    void prepareCgiEnv(HttpRequest &request, const std::string &absolute_path, const uint16_t serv_port);
+//    void prepareCgiEnv(HttpRequest &request, const std::string &absolute_path, const uint16_t serv_port);
 
     size_t getBodySize() const;
 
@@ -196,11 +212,13 @@ public:
 
     bool ParseCgiHeaders(size_t end);
 
+    void prepareData();
 
     void insertTableIntoBody(const std::string &str, const std::string &uri);
+
     void getAutoIndex(const std::string &path, const std::string &uri_path);
 
-        static const std::string HTTP_REASON_CONTINUE;
+    static const std::string HTTP_REASON_CONTINUE;
     static const std::string HTTP_REASON_SWITCHING_PROTOCOLS;
     static const std::string HTTP_REASON_PROCESSING;
     static const std::string HTTP_REASON_OK;

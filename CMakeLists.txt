@@ -22,6 +22,7 @@ add_executable(webserv
 #        srcs/CgiHandler.cpp
         srcs/check.cpp
         srcs/FileStats.cpp
+        srcs/CgiHandler.cpp
 
         incl/HttpRequest.hpp
         incl/HttpResponse.hpp
@@ -35,4 +36,4 @@ add_executable(webserv
         incl/Session.hpp
         incl/FileStats.hpp
 #        incl/CgiHandler.hpp
-        )
+        incl/CgiHandler.hpp incl/ISubscriber.hpp incl/IManager.hpp)

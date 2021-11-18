@@ -13,6 +13,8 @@
 #include "HttpResponse.hpp"
 #include <unistd.h>
 #include "Socket.hpp"
+#include "ISubscriber.hpp"
+#include "IManager.hpp"
 
 class HttpResponse;
 
@@ -20,98 +22,100 @@ class HttpRequest;
 
 class Socket;
 
-class Session
-{
+class Session : public ISubscriber {
 private:
-	int              _fd;
-	Socket           *_server_socket;
-	HttpResponse     *_response;
-	HttpRequest      *_request;
-	struct sockaddr  _s_addr;
-	bool             _keep_alive;
-	short            _status;
-	time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
-	static const int HTTP_DEFAULT_TIMEOUT = 5;
-	std::string      _buffer;
+    int              _fd;
+    Socket           *_server_socket;
+    HttpResponse     *_response;
+    HttpRequest      *_request;
+    struct sockaddr  _s_addr;
+    bool             _keep_alive;
+    short            _status;
+    time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
+    static const int HTTP_DEFAULT_TIMEOUT = 5;
+    std::string      _buffer;
+    IManager         *_mng;
 public:
-	const std::string &getBuffer() const;
+    const std::string &getBuffer() const;
 
-private:
-	unsigned int _p;
-	enum Status
-	{
-		UNUSED        = 1, // if keep_alive false -> do not close
-		AWAIT_NEW_REQ = 2, // if keep alive true close
-		READY_TO_SEND = 3, // response ready -> send
-		TIMEOUT       = 4 //should be closed with timeout;
-	};
+    enum Status {
+        AWAIT_NEW_REQ = 1, // if keep alive true close
+        PIPE_TO_CGI   = 2,
+        READ_FROM_CGI = 3,
+        SENDING       = 4,// response ready -> send
+        TIMEOUT       = 5 //should be closed with timeout;
+    };
 
 public:
+    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+    bool shouldClose();
+    short getStatus() const;
 
-	short getStatus() const;
+    void setStatus(short status);
 
-	void setStatus(short status);
+    int getFd() const;
 
-	int getFd() const;
+    void setFd(int fd);
 
-	void setFd(int fd);
+    Socket *getServerSocket() const;
 
-	Socket *getServerSocket() const;
+    std::string getIpFromSock();
 
-	std::string getIpFromSock();
+    void setServerSocket(Socket *serverSocket);
 
-	void setServerSocket(Socket *serverSocket);
+    const HttpResponse *getResponse() const;
 
-	const HttpResponse *getResponse() const;
+    void setResponse(const HttpResponse *response);
 
-	void setResponse(const HttpResponse *response);
+    HttpRequest *getRequest() const;
 
-	HttpRequest *getRequest() const;
+    void setRequest(HttpRequest *request);
 
-	void setRequest(HttpRequest *request);
+    bool isKeepAlive() const;
 
-	bool isKeepAlive() const;
+    void setKeepAlive(bool keepAlive);
 
-	void setKeepAlive(bool keepAlive);
+    time_t getConnectionTimeout() const;
 
-	time_t getConnectionTimeout() const;
+    void setConnectionTimeout();
 
-	void setConnectionTimeout();
+    bool writeCgi(size_t bytes, bool eof);
 
-	Session();
+    bool readCgi(size_t bytes, bool eof);
 
-	Session(const Session &rhs);
+    Session();
 
-	Session &operator=(const Session &rhs);
+    Session(const Session &rhs);
 
-	Session(int i, Socket *pSocket, sockaddr sockaddr1);
+    Session &operator=(const Session &rhs);
 
-	void parseRequest(long bytes);
+    Session(int i, Socket *pSocket, sockaddr sockaddr1, IManager *mng);
 
-	void prepareResponse();
+    void parseRequest(size_t bytes);
 
-	~Session();
+    void prepareResponse();
 
-	void end(void);
+    ~Session();
 
-	class SessionException : public std::exception
-	{
-		const std::string m_msg;
-	public:
-		SessionException(const std::string &msg);
+    void end(void);
 
-		~SessionException() throw();
+    void processResponse(size_t bytes);
 
-		const char *what() const throw();
-	};
+    class SessionException : public std::exception {
+        const std::string m_msg;
+    public:
+        SessionException(const std::string &msg);
 
-	void send();
+        ~SessionException() throw();
 
-	bool shouldClose(void);
+        const char *what() const throw();
+    };
 
-	void clearBuffer(void);
+    void send();
 
-	std::string &getBuffer();
+    void clearBuffer(void);
+
+    std::string &getBuffer();
 
 };
 

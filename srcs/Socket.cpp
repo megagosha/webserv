@@ -9,9 +9,9 @@ Socket::Socket()
 
 }
 
-Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv) :
+Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv, Server *manager) :
 
-		_ip(ip), _port(port)
+		_ip(ip), _port(port), _serv(manager)
 {
 	appendVirtualServer(serv);
 	sockaddr_in addr = {};
@@ -37,6 +37,7 @@ Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv) :
 		close(fd);
 		throw SocketException(std::strerror(errno));
 	}
+    manager->subscribe(_socket_fd, EVFILT_READ, this);
 }
 
 Socket::Socket(const Socket &rhs) : _socket_fd(rhs._socket_fd),
@@ -108,7 +109,7 @@ std::pair<int, Session *> Socket::acceptConnection()
 					&s_len); //@todo To ensure that accept() never blocks, the passed socket sockfd needs to have the O_NONBLOCK
 	if (new_fd < 0)
 		throw SocketException("Failed to open connection");
-	res = _sessions.insert(std::make_pair(new_fd, Session(new_fd, this, s_addr)));
+	res = _sessions.insert(std::make_pair(new_fd, Session(new_fd, this, s_addr, _serv)));
     return (std::make_pair(new_fd, &((res.first)->second)));
 }
 
@@ -183,6 +184,14 @@ const std::map<std::string, VirtualServer> &Socket::getVirtualServers() const
 {
 	return _virtual_servers;
 }
+
+void Socket::processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv) {
+    std::pair<int, Session *> res;
+
+    res = acceptConnection();
+    serv->addSession(res);
+}
+
 
 ////@todo make sure virtual servers in each socket have unique server_name (only one empty server name per ip:port pair)
 ////@todo validate that each virtual server has at least one location and server root

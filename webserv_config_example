@@ -40,7 +40,7 @@ location /images
  }
  location *.php {
     root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-    cgi_pass /usr/local/Cellar/php@7.4/7.4.25/bin/php-cgi; #IS NOT VALID CGI specify full path
+    cgi_pass /opt/homebrew/opt/php@7.4/bin/php-cgi; #IS NOT VALID CGI specify full path
  }
   location *.bla {
      root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE

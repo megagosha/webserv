@@ -83,7 +83,7 @@ public:
 
 	HttpRequest();
 
-	HttpRequest(const HttpRequest &rhs);
+    HttpRequest(const HttpRequest &rhs);
 
 	HttpRequest &operator=(const HttpRequest &rhs);
 

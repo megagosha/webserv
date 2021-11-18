@@ -70,20 +70,27 @@ KqueueEvents::~KqueueEvents()
 	delete _w_event;
 	delete[] _res_event;
 }
+void KqueueEvents::addWriteOnly(int fd)
+{
+    _fds.insert(fd);
+    EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+    if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+        throw KqueueException();
+}
 
-void KqueueEvents::addFd(int fd, bool write)
+void KqueueEvents::addFd(int fd, short type)
 {
 	_fds.insert(fd);
 
-	EV_SET(_w_event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	EV_SET(_w_event, fd, type, EV_ADD, 0, 0, NULL);
 	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
 		throw KqueueException();
-	if (write)
-	{
-		EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-		if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
-			throw KqueueException();
-	}
+//	if (write)
+//	{
+//		EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+//		if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+//			throw KqueueException();
+//	}
 }
 
 void KqueueEvents::addProcess(pid_t proc)
@@ -93,16 +100,16 @@ void KqueueEvents::addProcess(pid_t proc)
 		throw KqueueException();
 }
 
-void KqueueEvents::deleteFd(int fd, bool write)
+void KqueueEvents::deleteFd(int fd, short type)
 {
 	_fds.erase(fd);
-	EV_SET(_w_event, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	EV_SET(_w_event, fd, type, EV_DELETE, 0, 0, NULL);
 	kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
-	if (write)
-	{
-		EV_SET(_w_event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-		kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
-	}
+//	if (write)
+//	{
+//		EV_SET(_w_event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+//		kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
+//	}
 }
 
 std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout)

@@ -6,6 +6,8 @@
 #define SERVER_HPP
 
 #include "VirtualServer.hpp"
+#include "ISubscriber.hpp"
+#include "IManager.hpp"
 #include "Socket.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -21,6 +23,7 @@
 
 #define MAX_AWAIT_CONN 100
 #define MAX_KQUEUE_EV 100
+
 /*
  * Server {
  * Sockets int fd - Socket obj
@@ -57,56 +60,71 @@
  * 5. if found socket->proccessRequest(fd);
  */
 class Socket;
-
-class Server
-{
-	typedef std::map<int, Socket>::iterator iter;
-
+class VirtualServer;
+class Server : public IManager {
+    typedef std::map<int, Socket>::iterator iter;
+//std::map<int, Session *> _cgi_pipe_fd, session;
 private:
-	std::map<int, Socket>    _sockets; // <socket fd, socket obj>
-	std::map<int, Session *> _sessions;
-	std::set<int>            _pending_sessions;
-	std::list<std::string>   _tok_list;
-	KqueueEvents             _kq;
-	Server();
+    std::map<int, Socket>        _sockets; // <socket fd, socket obj>
+    std::map<int, Session *> _sessions;
+//    std::map<int, Session *> _cgi_pipes;
+    std::map<int,  ISubscriber *> _subs;
+    std::set<int>                _pending_sessions;
+    std::list<std::string>       _tok_list;
+    KqueueEvents                 _kq;
+
+    Server();
 
 public:
 
-	Server &operator=(const Server &rhs);
+    Server &operator=(const Server &rhs);
 
-	Server(const Server &rhs);
+    Server(const Server &rhs);
 
-	//@todo create destructor
-	~Server();
+    //@todo create destructor
+    ~Server();
 
-	Server(const std::string &config_file);
+    Server(const std::string &config_file);
 
-	void processRequests(std::pair<int, struct kevent *> &updates);
+    void addSession(std::pair<int, Session*> pair);
 
-	void processResponse(std::pair<int, struct kevent *> &updates);
+    virtual void subscribe(int fd, short type, ISubscriber *obj);
 
-	void run(void);
+    virtual void unsubscribe(int fd, short type, ISubscriber *obj);
 
-	bool validate(const VirtualServer &server);
+    _Noreturn virtual void loop();
 
-	void apply(VirtualServer &serv);
+//    void run(void);
 
-	class ServerException : public std::exception
-	{
-		const std::string m_msg;
-	public:
-		ServerException(const std::string &msg);
+    bool validate(const VirtualServer &server);
 
-		~ServerException() throw();
+    void apply(VirtualServer &serv);
 
-		const char *what() const throw();
-	};
+    class ServerException : public std::exception {
+        const std::string m_msg;
+    public:
+        ServerException(const std::string &msg);
 
-	void prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes);
+        ~ServerException() throw();
 
-	void acceptConnection(std::map<int, Socket>::iterator it);
+        const char *what() const throw();
+    };
 
-	void closeConnection(int cur_fd);
+    void prepareResponse(std::map<int, Session *>::iterator sess_iter, long bytes);
+
+    void acceptConnection(std::map<int, Socket>::iterator it);
+
+    void closeConnection(int cur_fd);
+
+//    void loopEvenets(std::pair<int, struct kevent *> &updates);
+//
+//    void processReadEvent(struct kevent event);
+//
+//    void processWriteEvent(struct kevent event);
+//
+//    void watchPipe(Session *sess, bool rw);
+//
+//    void createSession(Session *sess);
 };
 
 #endif //SERVER_HPP

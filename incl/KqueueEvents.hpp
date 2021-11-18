@@ -33,13 +33,14 @@ public:
 
 	~KqueueEvents();
 
-	void addFd(int fd, bool write = false);
+	void addFd(int fd, short type);
+    void addWriteOnly(int fd);
 
-	void addProcess(pid_t proc);
+    void addProcess(pid_t proc);
 
 	int getQueueFd(void) const;
 
-	void deleteFd(int fd, bool write = false);
+	void deleteFd(int fd, short type);
 
 	std::pair<int, struct kevent *> getUpdates(int = 5);
 

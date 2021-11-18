@@ -18,6 +18,7 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
+#include "Server.hpp"
 #include "VirtualServer.hpp"
 #include <map>
 #include <string>
@@ -27,7 +28,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "Session.hpp"
-
+#include "ISubscriber.hpp"
 class VirtualServer;
 
 class HttpResponse;
@@ -35,24 +36,32 @@ class HttpResponse;
 class HttpRequest;
 
 class Session;
-
-class Socket
+//class Server;
+class Socket : public ISubscriber
 {
 private:
+
+
+//    IManager *_manager;
 	int _socket_fd;
 	in_addr_t _ip;
 	uint16_t _port;
 	VirtualServer *_default_config;
 	std::map<int, Session> _sessions;
 	std::map<std::string, VirtualServer> _virtual_servers; //@todo change container
+    Server *_serv;
 	Socket();
 
 public:
-	Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv);
+//    Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv, Server *manager);
+
+    Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv, Server *manager);
 
 	Socket(const Socket &);
 
-	~Socket();
+    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+
+    virtual ~Socket();
 
 	Socket &operator=(const Socket &);
 
