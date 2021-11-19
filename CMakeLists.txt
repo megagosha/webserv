@@ -19,7 +19,6 @@ add_executable(webserv
         srcs/Location.cpp
         srcs/Utils.cpp
         srcs/MimeType.cpp
-#        srcs/CgiHandler.cpp
         srcs/check.cpp
         srcs/FileStats.cpp
         srcs/CgiHandler.cpp
@@ -35,5 +34,6 @@ add_executable(webserv
         incl/MimeType.hpp
         incl/Session.hpp
         incl/FileStats.hpp
-#        incl/CgiHandler.hpp
-        incl/CgiHandler.hpp incl/ISubscriber.hpp incl/IManager.hpp)
+        incl/CgiHandler.hpp
+        incl/ISubscriber.hpp
+        incl/IManager.hpp)
