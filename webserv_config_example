@@ -34,7 +34,7 @@ server {
 
 location /images
  {
-    root /Users/megagosha/42/webserv/www/final/;
+    root /Users/megagosha/42/webserv/www/final/images/;
     autoindex on;
     methods POST GET DELETE;
  }

@@ -10,8 +10,9 @@ HttpResponse::HttpResponse() {
 }
 
 HttpResponse::~HttpResponse() {
-    if (_cgi != nullptr)
+    if (_cgi != nullptr) {
         delete _cgi;
+    }
 }
 
 //error response constructor
@@ -29,7 +30,7 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
  * response to a CONNECT request (Section 4.3.6 of [RFC7231]).
 
  */
-HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
+HttpResponse::HttpResponse(Session &session, const VirtualServer *config, IManager *mng) {
     const Location *loc;
     HttpRequest    *req = session.getRequest();
     _cgi       = nullptr;
@@ -79,11 +80,13 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
         return;
     }
     if (!loc->getCgiPass().empty()) {
-        _cgi = new CgiHandler();
+        _cgi = new CgiHandler(mng);
         _cgi->prepareCgiEnv(req, req->getNormalizedPath(), std::to_string(config->getPort()), loc->getCgiPass());
         _cgi->setCgiPath(loc->getCgiPass());
-        if (executeCgi(req) != HTTP_OK)
+        if (executeCgi(req) != HTTP_OK) {
+            delete _cgi;
             setError(HTTP_INTERNAL_SERVER_ERROR, config);
+        }
         return;
     } else if (req->getMethod() == "GET")
         processGetRequest(config, loc, req);
@@ -560,6 +563,13 @@ void HttpResponse::prepareData() {
 
     insertHeader("Content-Length", std::to_string(_body_size));
     setTimeHeader();
+
+    if ((it = _response_headers.find("Status")) != _response_headers.end())
+    {
+        _response_headers.erase(it);
+
+    }
+    it = _response_headers.begin();
     _headers_vec.reserve(500);
     _headers_vec.insert(_headers_vec.begin(), _response_string.begin(), _response_string.end());
     for (it = _response_headers.begin(); it != _response_headers.end(); ++it) {
@@ -570,8 +580,8 @@ void HttpResponse::prepareData() {
         _headers_vec.push_back('\r');
         _headers_vec.push_back('\n');
     }
-    _headers_vec.push_back('\r');
-    _headers_vec.push_back('\n');
+        _headers_vec.push_back('\r');
+        _headers_vec.push_back('\n');
 }
 
 int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
@@ -605,6 +615,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         if (data_to_send > bytes)
             data_to_send = bytes;
         res              = send(fd, _body.data() + pos, data_to_send, 0);
+        write(STDOUT_FILENO, _body.data() + pos, data_to_send);
         if (res < 0)
             return (-1);
         else
@@ -889,6 +900,10 @@ CgiHandler *HttpResponse::getCgi() const {
     return _cgi;
 }
 
+void HttpResponse::setCgi(CgiHandler *cgi)
+{
+    _cgi = cgi;
+}
 bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
     int    fd = _cgi->getRequestPipe();
     int    res;
@@ -917,6 +932,7 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
                   << std::endl;
         // return error
         setError(HTTP_INTERNAL_SERVER_ERROR, nullptr);
+        return (true);
     }
 
     return (false);
@@ -938,6 +954,7 @@ bool HttpResponse::readCgi(size_t bytes, bool eof) {
         _cgi->setHeadersParsed(true);
         _body.erase(_body.begin(), _body.begin() + pos + 4);
     }
+
     if (res == 0 || eof) {
         close(fd);
         _body_size = _body.size();

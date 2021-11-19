@@ -167,10 +167,7 @@ const std::map<std::string, VirtualServer> &Socket::getVirtualServers() const {
     return _virtual_servers;
 }
 
-void Socket::processEvent(int fd, __attribute__((unused)) size_t bytes_available,
-                          __attribute__((unused)) int16_t filter,
-                          __attribute__((unused)) bool eof,
-                          Server *serv) {
+void Socket::processEvent(int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags, __unused bool eof, Server *serv) {
     std::pair<int, Session *> res;
 
     if (fd == _socket_fd) {

@@ -41,11 +41,10 @@ public:
 
     enum Status {
         AWAIT_NEW_REQ = 1, // if keep alive true close
-        PIPE_TO_CGI   = 2,
-        READ_FROM_CGI = 3,
-        SENDING       = 4,// response ready -> send
-        TIMEOUT       = 5,//should be closed with timeout;
-        CLOSING       = 6
+        CGI_PROCESSING = 2,
+        SENDING       = 3,// response ready -> send
+        TIMEOUT       = 4,//should be closed with timeout;
+        CLOSING       = 5
     };
 
 public:
@@ -60,7 +59,7 @@ public:
 
     virtual     ~Session();
 
-    virtual void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+    virtual void processEvent(int fd, size_t bytes_available, int16_t filter, uint32_t flags, bool eof, Server *serv);
 
     void processCurrentStatus(short status);
 
@@ -121,8 +120,6 @@ public:
 
         const char *what() const throw();
     };
-
-    void send();
 
     void clearBuffer(void);
 

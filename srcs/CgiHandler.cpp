@@ -4,20 +4,46 @@
 
 #include "CgiHandler.hpp"
 
+
+CgiHandler::CgiHandler(IManager *mng) :
+        _cgi_pid(-1),
+        _request_pipe(-1),
+        _response_pipe(-1),
+        _req(nullptr),
+        _pos(0),
+        _headers_parsed(false), _mng(mng) {
+}
+
+CgiHandler::CgiHandler(const CgiHandler &rhs) : _cgi_pid(rhs._cgi_pid), _req(rhs._req), _pos(rhs._pos),
+                                                _headers_parsed(rhs._headers_parsed) {
+
+}
+
+CgiHandler &CgiHandler::operator=(const CgiHandler &rhs) {
+    if (this == &rhs)
+        return (*this);
+    _headers_parsed = rhs._headers_parsed;
+    _cgi_pid        = rhs._cgi_pid;
+    _pos            = rhs._pos;
+    _req            = rhs._req;
+    return (*this);
+}
+
+CgiHandler::~CgiHandler() {
+    if (waitpid(_cgi_pid, &_exit_status, WNOHANG) == 0) {
+        std::cout << "CGI GOT KILLED" << std::endl;
+        kill(_cgi_pid, SIGKILL);
+    }
+    _mng->unsubscribe(_cgi_pid, EVFILT_PROC);
+    std::cout << "CGI DIED" << std::endl;
+}
+
 pid_t CgiHandler::getCgiPid() const {
     return _cgi_pid;
 }
 
 void CgiHandler::setCgiPid(pid_t cgiPid) {
     _cgi_pid = cgiPid;
-}
-
-HttpRequest *CgiHandler::getReq() const {
-    return _req;
-}
-
-void CgiHandler::setReq(HttpRequest *req) {
-    _req = req;
 }
 
 size_t CgiHandler::getPos() const {
@@ -36,29 +62,6 @@ void CgiHandler::setHeadersParsed(bool status) {
     _headers_parsed = status;
 }
 
-
-CgiHandler::~CgiHandler() {
-
-}
-
-CgiHandler::CgiHandler(const CgiHandler &rhs) : _cgi_pid(rhs._cgi_pid), _req(rhs._req), _pos(rhs._pos),
-                                                _headers_parsed(rhs._headers_parsed) {
-
-}
-
-CgiHandler &CgiHandler::operator=(const CgiHandler &rhs) {
-    if (this == &rhs)
-        return (*this);
-    _headers_parsed = rhs._headers_parsed;
-    _cgi_pid        = rhs._cgi_pid;
-    _pos            = rhs._pos;
-    _req            = rhs._req;
-    return (*this);
-}
-
-CgiHandler::CgiHandler(pid_t pid, HttpRequest *req) : _cgi_pid(pid), _req(req), _headers_parsed(false) {
-
-}
 
 bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute_path, const std::string &serv_port,
                                const std::string &cgi_exec) {
@@ -82,7 +85,7 @@ bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute
     _env["PATH_INFO"]       = request->getRequestUri();
     _env["QUERY_STRING"]    = request->getQueryString();
     _env["REQUEST_URI"]     = request->getRequestUri();
-    _env["REMOTE_ADDR"]     = request->getClientIp();
+    _env["REMOTE_ADDR"]     = request->getClientIp(); //@todo FIX
     _env["REMOTE_HOST"]     = "0.0.0.0";
     _env["REMOTE_IDENT"]    = "";
     _env["REMOTE_USER"]     = "";
@@ -119,14 +122,6 @@ const std::map<std::string, std::string> &CgiHandler::getEnv() const {
     return _env;
 }
 
-const std::string &CgiHandler::getCgiPath() const {
-    return _cgi_path;
-}
-
-void CgiHandler::setCgiPath(const std::string &cgiPath) {
-    _cgi_path = cgiPath;
-}
-
 char **CgiHandler::getEnv(void) {
     char **res = new char *[_env.size() + 1];
     int  i     = 0;
@@ -141,6 +136,14 @@ char **CgiHandler::getEnv(void) {
     }
     res[i]                                                     = nullptr;
     return (res);
+}
+
+const std::string &CgiHandler::getCgiPath() const {
+    return _cgi_path;
+}
+
+void CgiHandler::setCgiPath(const std::string &cgiPath) {
+    _cgi_path = cgiPath;
 }
 
 void CgiHandler::setRequestPipe(int requestPipe) {
@@ -159,28 +162,6 @@ int CgiHandler::getResponsePipe() const {
     return _response_pipe;
 }
 
-CgiHandler::CgiHandler() :
-        _cgi_pid(0),
-        _request_pipe(-1),
-        _response_pipe(-1),
-        _req(nullptr),
-        _pos(0),
-        _headers_parsed(false) {
-}
-
-
-bool CgiHandler::cgiEnd() {
-    int res;
-    res = waitpid(_cgi_pid, &_exit_status, WNOHANG);
-    if (res == -1)
-        throw CgiException("waitpid returned -1");
-    else if (res == 0)
-        kill(_cgi_pid, SIGKILL);
-    else if (WIFEXITED(_exit_status) && WEXITSTATUS(_exit_status) == 0)
-        return (true);
-    return (false);
-}
-
 CgiHandler::CgiException::CgiException(const std::string &msg) {
     std::cout << msg << std::endl;
 }
@@ -191,4 +172,8 @@ CgiHandler::CgiException::~CgiException() throw() {
 
 const char *CgiHandler::CgiException::what() const throw() {
     return exception::what();
+}
+
+int &CgiHandler::getExitStatus() {
+    return _exit_status;
 }

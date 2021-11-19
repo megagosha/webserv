@@ -22,7 +22,7 @@
 #include "FileStats.hpp"
 #include <sys/types.h>
 #include <sys/wait.h>
-
+#include "IManager.hpp"
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
@@ -128,14 +128,9 @@ private:
 
 public:
     CgiHandler *getCgi() const;
-//    std::map<std::string, std::string> _cgi_env;
-//    std::string                        _cgi_path; //@todo should be recieved through session or other method which has access to location obj.
-//    pid_t            _cgi_num;
 
-    //	bool _cgi;
-//	CgiHandler *_cgi_obj;
+    void setCgi(CgiHandler *cgi);
 
-public:
     void setResponseString(const std::string &pr, HTTPStatus status);
 
     HTTPStatus writeFileToBuffer(const std::string &file_path);
@@ -156,18 +151,9 @@ public:
 
     bool readCgi(size_t bytes, bool eof);
 
-//	HttpResponse(const HttpRequest &request, const Socket *sock, const VirtualServer *ptr);
-
-
     const std::string &getAbsolutePath() const;
 
-//	const VirtualServer *getServ() const;
-
-//	const Location *getLoc() const;
-
     ~HttpResponse();
-
-//	bool isCgi() const;
 
     static const std::string &getReasonForStatus(HTTPStatus status);
 
@@ -190,14 +176,12 @@ public:
 
     const std::string &getBody() const;
 
-//    void prepareCgiEnv(HttpRequest &request, const std::string &absolute_path, const uint16_t serv_port);
-
     size_t getBodySize() const;
 
     HTTPStatus executeCgi(HttpRequest *req);
 
     HttpResponse(Session &session,
-                 const VirtualServer *config);
+                 const VirtualServer *config, IManager *mng);
 
     void processGetRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req);
 

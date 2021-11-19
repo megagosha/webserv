@@ -54,7 +54,7 @@ public:
 
 	Socket(const Socket &);
 
-    void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv);
+    void processEvent(int fd, size_t bytes_available, int16_t filter, uint32_t flags, bool eof, Server *serv);
 
     ~Socket();
 

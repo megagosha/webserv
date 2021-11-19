@@ -132,36 +132,6 @@ bool HttpRequest::processHeaders(Socket *sock) {
     return (true);
 }
 
-//bool HttpRequest::parseBody(std::string &request, size_t &pos, Socket *socket)
-//{
-//
-//	if (_chunked)
-//		return (parseChunked(request, pos + 4, (long) request.size())); //@todo types fix
-//	else if (request.find("\r\n\r\n", pos) == pos)
-//	{
-//		std::cout << "len " << _content_length << " max " << _max_body_size << std::endl;
-//		if (_content_length > _max_body_size)
-//		{
-//			_parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
-//			_ready         = true;
-//			return (false);
-//		}
-//		_body += request.substr(pos + 4, pos + _content_length);
-//		std::cout << "parsed " << "size: " << _body.size() << std::endl;
-//		//        std::cout << "body content: " << _body << std::endl;
-//		if (_body.size() == _content_length)
-//			_ready = true;
-//		else
-//		{
-//			std::cout << "Should continue" << std::endl;
-//			_ready = true;
-//			return (true);
-//		}
-//	} else
-//		_parsing_error = HttpResponse::HTTP_BAD_REQUEST;
-//	return (false);
-//}
-
 /*
  * Attempt to process request. If end of request message is found, message will be processed.
  * If not, request is appended to buffer and parsing is not performed.
@@ -211,18 +181,6 @@ HttpRequest::HttpRequest(Session *sess, const std::string &client_ip, unsigned l
         bytes = 9;
     return;
 }
-////reserve field memory
-//HttpRequest::HttpRequest(std::string &request, const std::string &client_ip, unsigned long bytes, Socket *sock) : _client_ip(
-//        client_ip) {
-//	if (sock == nullptr)
-//		_chunked = false;
-//    std::cout << request << std::endl;
-//    _chunked = false;
-//    _ready = false;
-//    _content_length = 0;
-//    _parsing_error = 0;
-
-//}
 
 bool HttpRequest::appendBody(Session *sess, size_t &pos) {
     const std::string &buff = sess->getBuffer();

@@ -10,6 +10,6 @@ class Server;
 class ISubscriber {
 public:
     virtual ~ISubscriber() {};
-    virtual void processEvent(int fd, size_t bytes_available, int16_t filter, bool eof, Server *serv) = 0;
+    virtual void processEvent(int fd, size_t bytes_available, int16_t filter, uint32_t flags, bool eof, Server *serv) = 0;
 };
 #endif //WEBSERV_ISUBSCRIBER_HPP

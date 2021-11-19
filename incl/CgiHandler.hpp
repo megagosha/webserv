@@ -19,27 +19,27 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "HttpRequest.hpp"
-
-class CgiHandler {
+#include "ISubscriber.hpp"
+#include "IManager.hpp"
+class CgiHandler  {
 public:
 
-    ~CgiHandler();
+    CgiHandler();
 
     CgiHandler(CgiHandler const &rhs);
 
     CgiHandler &operator=(CgiHandler const &rhs);
 
-    CgiHandler(pid_t pid, HttpRequest *req);
+    virtual ~CgiHandler();
 
-    bool prepareCgiEnv(HttpRequest *request, const std::string &absolute_path, const std::string& serv_port, const std::string &cgi_exec);
+
+    bool prepareCgiEnv(HttpRequest *request, const std::string &absolute_path, const std::string &serv_port,
+                       const std::string &cgi_exec);
 
     pid_t getCgiPid() const;
 
     void setCgiPid(pid_t cgiPid);
 
-    HttpRequest *getReq() const;
-
-    void setReq(HttpRequest *req);
 
     size_t getPos() const;
 
@@ -48,8 +48,6 @@ public:
     bool isHeadersParsed() const;
 
     void setHeadersParsed(bool);
-
-    bool cgiEnd();
 
     class CgiException : public std::exception {
         const std::string m_msg;
@@ -61,7 +59,7 @@ public:
         const char *what() const throw();
     };
 
-    CgiHandler();
+    explicit CgiHandler(IManager *mng);
 
     void setRequestPipe(int requestPipe);
 
@@ -79,9 +77,11 @@ public:
 
     int getResponsePipe() const;
 
+    int &getExitStatus();
+
 private:
-    pid_t _cgi_pid;
-    int   _request_pipe;
+    pid_t                              _cgi_pid;
+    int                                _request_pipe;
     int                                _response_pipe;
     HttpRequest                        *_req;
     size_t                             _pos;
@@ -89,6 +89,7 @@ private:
     std::string                        _cgi_path;
     int                                _exit_status;
     bool                               _headers_parsed;
+    IManager                           *_mng;
 };
 
 
