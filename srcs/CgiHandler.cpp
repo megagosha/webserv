@@ -78,8 +78,9 @@ bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute
     _env["GATEWAY_INTERFACE"] = std::string("CGI/1.1");
 //    std::string path_info = absolute_path.substr(absolute_path.find_last_of('/') + 1);
     if (!cgi_exec.empty())
-        _env["SCRIPT_NAME"]   = "/Users/megagosha/Downloads/cgi_tester";//cgi_exec;//"/index.php";//request.getRequestUri();
-    _env["SCRIPT_FILENAME"]   = absolute_path;
+		_env["SCRIPT_NAME"] = "/Users/sergeykozlov/wsrv12/cgi_tester"; //cgi_exec;//"/index.php";//request.getRequestUri();
+	//@todo remove hardcoded path
+	_env["SCRIPT_FILENAME"]   = absolute_path;
 
     _env["PATH_TRANSLATED"] = request->getRequestUri(); //@todo add additional string manipulation as in rfc
     _env["PATH_INFO"]       = request->getRequestUri();

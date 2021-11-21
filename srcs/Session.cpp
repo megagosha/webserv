@@ -310,7 +310,7 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
 }
 
 Session::SessionException::SessionException(const std::string &msg) {
-
+	(void)msg;
 }
 
 Session::SessionException::~SessionException() throw() {

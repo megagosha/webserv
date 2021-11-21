@@ -16,7 +16,10 @@ Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv, Server *m
     int         fd;
 
     fd         = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    _socket_fd = fd;
+	int opt = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)) < 0)
+		throw SocketException(std::strerror(errno));
+	_socket_fd = fd;
     std::cout << "socket created " << fd << std::endl;
     if (fd < 0)
         throw SocketException(std::strerror(errno));
@@ -182,7 +185,7 @@ void Socket::processEvent(int fd, __unused size_t bytes_available, __unused int1
 
 Socket::SocketException::SocketException(const char *msg) : m_msg(msg) {}
 
-Socket::SocketException::~SocketException() throw() {};
+Socket::SocketException::~SocketException() throw() {}
 
 const char *Socket::SocketException::what() const throw() {
     std::cerr << "SocketError: ";

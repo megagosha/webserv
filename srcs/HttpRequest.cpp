@@ -323,7 +323,7 @@ std::map<std::string, std::string> &HttpRequest::getHeaderFields() {
 
 const std::string &HttpRequest::getBody() const {
     return _body;
-};
+}
 
 HttpRequest::HttpRequest(
         const HttpRequest &rhs) : _method(rhs._method),
@@ -341,8 +341,8 @@ HttpRequest::HttpRequest(
                                   _parsing_error(rhs._parsing_error),
                                   _chunk_length(rhs._chunk_length),
                                   _c_bytes_left(rhs._c_bytes_left),
-                                  _skip_n(rhs._skip_n) {
-};
+                                  _skip_n(rhs._skip_n) 
+{}
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &rhs) {
     if (this == &rhs)

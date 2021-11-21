@@ -371,7 +371,7 @@ VirtualServer::VirtualServerException::VirtualServerException(const std::string 
 {}
 
 VirtualServer::VirtualServerException::~VirtualServerException() throw()
-{};
+{}
 
 const char *VirtualServer::VirtualServerException::what() const throw()
 {

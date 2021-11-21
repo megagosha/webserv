@@ -56,7 +56,7 @@ public:
 
     virtual void unsubscribe(int fd, int16_t type);
 
-    _Noreturn virtual void loop();
+    virtual void loop();
 
     bool validate(const VirtualServer &server);
 

@@ -4,7 +4,8 @@
 #include "Server.hpp"
 
 void signal_handler(int signal) {
-    exit(signal);
+	std::cout << "stopping on signal " << signal << std::endl;
+	exit(signal);
 }
 
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
@@ -14,8 +15,9 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
     Utils::tokenizeFileStream(config_file, _tok_list);
     std::list<std::string>::iterator     end = _tok_list.end();
     std::list<std::string>::iterator     it  = _tok_list.begin();
-    for (; it != end; ++it) // loop for servers
-    {
+	std::string mime_conf_path;
+	for (; it != end; ++it) // loop for servers
+	{
         if (*it != "server" || *(++it) != "{")
             throw Server::ServerException("Error while parsing config file");
         VirtualServer serv;
@@ -47,11 +49,18 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
                 serv.setLocation(it, end);
                 continue;
             }
-            ++it;
+			if (it != end && *it == "mime_conf_path")
+			{
+				Utils::skipTokens(it, end, 1);
+				mime_conf_path = *it;
+			}
+			++it;
             //@todo THROW ERROR if nothing else worked
         }
-        MimeType("/Users/megagosha/42/webserv/mime.conf"); //@todo put mime path to config
-        validate(serv);
+		if(mime_conf_path.empty())
+			throw Server::ServerException("No mime.conf path");
+		MimeType(mime_conf_path.c_str());
+		validate(serv);
         apply(serv);
     }
     for (std::map<int, Socket*>::iterator ity = _sockets.begin(); ity != _sockets.end(); ++ity) {
@@ -86,7 +95,7 @@ Server::~Server() {
     }
 }
 
-_Noreturn void Server::loop() {
+void Server::loop() {
     std::pair<int, struct kevent *>        updates;
     std::map<int, ISubscriber *>::iterator it;
     int                                    i;
@@ -177,7 +186,7 @@ void Server::addSession(std::pair<int, Session *> pair) {
 
 Server::ServerException::ServerException(const std::string &msg) : m_msg(msg) {}
 
-Server::ServerException::~ServerException() throw() {};
+Server::ServerException::~ServerException() throw() {}
 
 const char *Server::ServerException::what() const throw() {
     std::cerr << "ServerError: ";
