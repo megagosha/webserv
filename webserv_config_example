@@ -45,6 +45,7 @@ location /images
   location *.bla {
      root /Users/sergeykozlov/wsrv12/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
      cgi_pass /Users/sergeykozlov/wsrv12/cgi_tester; #IS NOT VALID CGI specify full path
+      client_max_body_size 300000000;
   }
   mime_conf_path /Users/sergeykozlov/wsrv12/mime.conf
 }
@@ -67,12 +68,14 @@ server {
   location *.bla {
      root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
      cgi_pass /Users/sergeykozlov/wsrv12/cgi_tester;
+     client_max_body_size 300000000;
      methods POST GET;
   }
   location /post_body
   {
-      client_max_body_size 0.0001;
       root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/;
+      client_max_body_size 100;
+      root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/;
       methods POST;
   }
   location /directory

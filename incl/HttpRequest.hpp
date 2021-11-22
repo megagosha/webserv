@@ -20,103 +20,107 @@
 #include "Socket.hpp"
 #include "Location.hpp"
 #include "Session.hpp"
-enum Limits
-{
-	MAX_METHOD            = 8,
-	MAX_URI               = 2000,
-	MAX_V                 = 100,
-	MAX_FIELDS            = 100,
-	MAX_NAME              = 100,
-	MAX_VALUE             = 1000,
-	MAX_MESSAGE			  = 10000,
-	MAX_DEFAULT_BODY_SIZE = 1000000
-};
+
 
 std::string &leftTrim(std::string &str, std::string chars);
 
 class Socket;
 
 class Location;
+
 class Session;
-class HttpRequest
-{
+
+class HttpRequest {
 private:
-	std::string                        _method;
-	std::string                        _request_uri;
-	std::string                        _query_string;
-	std::string                        _uri_no_query;
-	std::string                        _normalized_path;
-	std::string                        _http_v; //true if http/1.1
-	bool                               _chunked;
-	std::map<std::string, std::string> _header_fields;
-	std::string                        _body;
-	std::string                        _client_ip;
-	unsigned long                      _content_length;
-	bool                               _ready;
-	unsigned long                      _max_body_size;
-	uint16_t                           _parsing_error;
-	std::string 						_chunk_length;
-	unsigned long 						_c_bytes_left;
-	short								_skip_n;
-//	std::string							_current_chunk;
+    std::string                        _method;
+    std::string                        _request_uri;
+    std::string                        _query_string;
+    std::string                        _uri_no_query;
+    std::string                        _normalized_path;
+    std::string                        _http_v; //true if http/1.1
+    bool                               _chunked;
+    std::map<std::string, std::string> _header_fields;
+    std::string                        _body;
+    std::string                        _client_ip;
+    unsigned long                      _content_length;
+    bool                               _ready;
+    unsigned long                      _max_body_size;
+    uint16_t         _parsing_error;
+    std::string                        _chunk_length;
+    unsigned long                      _c_bytes_left;
+    short                              _skip_n;
 
 public:
-	void setNormalizedPath(const std::string &normalizedPath);
 
-	const std::string &getUriNoQuery() const;
+    enum Limits {
+        MAX_METHOD            = 8,
+        MAX_URI               = 2000,
+        MAX_V                 = 100,
+        MAX_FIELDS            = 100,
+        MAX_NAME              = 100,
+        MAX_VALUE             = 1000,
+        MAX_MESSAGE           = 10000,
+        MAX_DEFAULT_BODY_SIZE = 10000000
+    };
 
-	void processUri(void);
+    void setNormalizedPath(const std::string &normalizedPath);
 
-	unsigned long getContentLength() const;
+    const std::string &getUriNoQuery() const;
 
-	void sendContinue(int fd);
+    void processUri(void);
 
-	bool isReady() const;
+    unsigned long getContentLength() const;
 
-	void setReady(bool ready);
+    void sendContinue(int fd);
 
-	uint16_t getParsingError() const;
+    bool isReady() const;
 
-	void setParsingError(uint16_t parsingError);
+    void setReady(bool ready);
 
-	const std::string &getClientIp() const;
+    uint16_t getParsingError() const;
 
-	HttpRequest();
+    void setParsingError(uint16_t parsingError);
+
+    const std::string &getClientIp() const;
+
+    HttpRequest();
 
     HttpRequest(const HttpRequest &rhs);
 
-	HttpRequest &operator=(const HttpRequest &rhs);
+    HttpRequest &operator=(const HttpRequest &rhs);
 
-	//reserve field memory
-	HttpRequest(Session *sess, const std::string &client_ip, unsigned long bytes);
+    //reserve field memory
+    HttpRequest(const std::string client_ip);
 
-	bool parseChunked(Session *sess, unsigned long &pos, unsigned long bytes);
+    bool parseChunked(Session *sess, unsigned long &pos, unsigned long bytes);
 
-	bool appendBody(Session *sess, size_t &pos);
+    bool appendBody(Session *sess, size_t &pos);
 
-	const std::string &getMethod() const;
+    const std::string &getMethod() const;
 
-	const std::string &getRequestUri() const;
+    const std::string &getRequestUri() const;
 
+    bool setErrorResponse(uint16_t Status);
 
-	const std::string &getHttpV() const;
+    const std::string &getHttpV() const;
 
-	bool isChunked() const;
+    bool isChunked() const;
 
-	std::map<std::string, std::string> &getHeaderFields();
+    std::map<std::string, std::string> &getHeaderFields();
 
-	const std::string &getBody() const;
+    const std::string &getBody() const;
 
-	const std::string &getQueryString() const;
+    const std::string &getQueryString() const;
 
-	const std::string &getNormalizedPath() const;
+    const std::string &getNormalizedPath() const;
 
-	bool parseRequestLine(const std::string &req, size_t &pos);
+    bool parseRequestLine(const std::string &req, size_t &pos);
 
-	bool parseHeaders(const std::string &req, size_t &pos);
+    bool parseHeaders(const std::string &req, size_t &pos);
 
-	bool parseRequestMessage(Session *sess, size_t &pos);
-	bool processHeaders(Socket *sock);
+    bool parseRequestMessage(Session *sess, size_t &pos, Socket *serv);
+
+    bool processHeaders();
 //	bool parseBody(std::string &request, size_t &pos, Socket *socket);
 };
 

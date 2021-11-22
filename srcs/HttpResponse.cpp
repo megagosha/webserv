@@ -30,12 +30,15 @@ HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
  * response to a CONNECT request (Section 4.3.6 of [RFC7231]).
 
  */
-HttpResponse::HttpResponse(Session &session, const VirtualServer *config, IManager *mng) {
-    const Location *loc;
-    HttpRequest    *req = session.getRequest();
-    _cgi       = nullptr;
-    _body_size = 0;
-    _pos = 0;
+HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
+//    const Location *loc;
+    HttpRequest *req = session.getRequest();
+
+    _config      = config;
+    _cgi         = nullptr;
+    _body_size   = 0;
+    _pos         = 0;
+    _status_code = HTTP_OK;
 
     if (req->getMethod() == "POST")
         std::cout << "!" << std::endl;
@@ -43,59 +46,69 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config, IManag
         setError(HTTP_BAD_REQUEST, config);
         return;
     }
-    if (session.getRequest()->getParsingError() != 0) {
-        setError((HTTPStatus) session.getRequest()->getParsingError(), config);
-        return;
-    }
-    loc = config->getLocationFromRequest(*req);
-    if (loc == nullptr) {
+    _loc = config->getLocationFromRequest(*req);
+    if (_loc == nullptr) {
         setError(HTTP_NOT_FOUND, config);
         return;
     }
-    if (!loc->methodAllowed(req->getMethod())) {
-        insertHeader("Allow", loc->getAllowedMethodsField());
+    if (!_loc->methodAllowed(req->getMethod())) {
+        insertHeader("Allow", _loc->getAllowedMethodsField());
         setError(HTTP_METHOD_NOT_ALLOWED, config);
         return;
     }
-    if (loc->isMaxBodySet() && loc->getMaxBody() < req->getBody().size()) {
+    if (!_loc->getRet().empty()) {
+        insertHeader("Location", _loc->getRet());
+        setResponseString("HTTP/1.1", HTTP_MOVED_PERMANENTLY);
+        return;
+    }
+    if (_loc->isMaxBodySet() && _loc->getMaxBody() < req->getBody().size()) {
         session.setKeepAlive(false);
         setError(HTTP_REQUEST_ENTITY_TOO_LARGE, config);
         return;
     }
+
     std::map<std::string, Location>::const_iterator it;
-    it      = config->checkCgi(req->getUriNoQuery());
+    it       = config->checkCgi(req->getUriNoQuery());
     if (it != config->getLocations().end())
-        loc = &it->second;
+        _loc = &it->second;
+}
+
+
+bool HttpResponse::responsePrepare(HttpRequest *req, IManager *mng) {
     std::cout << "!!!Normalized path: " << req->getNormalizedPath() << std::endl;
-//	std::map<std::string, std::string>::const_iterator it = req->getHeaderFields().find("Expected");
-//	if (it != req->getHeaderFields().end() && it->second == "100-continue")
-//	{
-//		//@todo check size requirements
-//		setError(HTTP_EXPECTATION_FAILED, config);
-//		return;
-//	}
-    if (!loc->getRet().empty()) {
-        insertHeader("Location", loc->getRet());
-        setResponseString("HTTP/1.1", HTTP_MOVED_PERMANENTLY);
-        return;
+
+//    if (!_loc->getCgiPass().empty()) {
+//        if (executeCgi(req) != HTTP_OK) {
+//            delete _cgi;
+//            setError(HTTP_INTERNAL_SERVER_ERROR, _config);
+//        }
+//        return;
+//    } else
+    if (req->getParsingError() != HTTP_OK)
+    {
+        setError(static_cast<HTTPStatus>(req->getParsingError()), _config);
+        return false;
     }
-    if (!loc->getCgiPass().empty()) {
+    if (!_loc->getCgiPass().empty()) {
         _cgi = new CgiHandler(mng);
-        _cgi->prepareCgiEnv(req, req->getNormalizedPath(), std::to_string(config->getPort()), loc->getCgiPass());
-        _cgi->setCgiPath(loc->getCgiPass());
+        _cgi->prepareCgiEnv(req, req->getNormalizedPath(), std::to_string(_config->getPort()), _loc->getCgiPass());
+        _cgi->setCgiPath(_loc->getCgiPass());
         if (executeCgi(req) != HTTP_OK) {
             delete _cgi;
-            setError(HTTP_INTERNAL_SERVER_ERROR, config);
+            setError(HTTP_INTERNAL_SERVER_ERROR, _config);
         }
-        return;
-    } else if (req->getMethod() == "GET")
-        processGetRequest(config, loc, req);
+    }
+    if (_status_code != HTTP_OK && _status_code != 0)
+        setResponseString("HTTP/1.1", static_cast<HTTPStatus>(_status_code));
+    else if (req->getMethod() == "GET")
+        processGetRequest(_config, _loc, req);
     else if (req->getMethod() == "POST")
-        processPostRequest(config);
+        processPostRequest(_config);
     else if (req->getMethod() == "DELETE")
-        processDeleteRequest(config, req);
+        processDeleteRequest(_config, req);
     else if (req->getMethod() == "PUT")
-        processPutRequest(config, loc, req);
+        processPutRequest(_config, _loc, req);
+    return false;
 }
 
 HttpResponse::HttpResponse(const HttpResponse &rhs) :
@@ -124,8 +137,8 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
     _body             = rhs.getBody();
     _body_size        = rhs.getBodySize();
     _cgi              = rhs._cgi;
-   _headers_vec = rhs._headers_vec;
-   _pos = rhs._pos;
+    _headers_vec      = rhs._headers_vec;
+    _pos              = rhs._pos;
 //    _cgi_path = rhs._cgi_path;
     return (*this);
 }
@@ -301,12 +314,12 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server) {
 }
 
 HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
-    char       *argv[2];
-    int        in_pipe[2];
-    int        out_pipe[2];
-    pid_t      child_pid;
-    int        res;
-    char       **env = _cgi->getEnv();
+    char  *argv[2];
+    int   in_pipe[2];
+    int   out_pipe[2];
+    pid_t child_pid;
+    int   res;
+    char  **env = _cgi->getEnv();
 
     argv[0] = const_cast<char *>(req->getNormalizedPath().data());
     argv[1] = nullptr;
@@ -348,12 +361,13 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
 
         //@todo write to stdin here;
 
-        if (req->getBody().empty())//@todo add pipe to kqueue here
+        if (req->getContentLength() > 0)//@todo add pipe to kqueue here
         {
-            close(in_pipe[PIPE_WRITE]);
+            _cgi->setRequestPipe(in_pipe[PIPE_WRITE]);
 //            _cgi->setStatus(CgiHandler::READ_RESULT);
         } else
-            _cgi->setRequestPipe(in_pipe[PIPE_WRITE]);
+            close(in_pipe[PIPE_WRITE]);
+
         close(out_pipe[PIPE_WRITE]);
         _cgi->setCgiPid(child_pid);
         _cgi->setResponsePipe(out_pipe[PIPE_READ]);
@@ -369,202 +383,13 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
     //waitpid(nChild, &status, WNOHANG);
 }
 
-////@todo rewrite
-//HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
-//    int                                          fd[2];
-//    char                                         **envp;
-//    char                                         tmp[64001]; //store current path
-//    char                                         **argv        = new char *[3];
-//    pid_t                                        nChild;
-//    int                                          status;
-//    int                                          aStdinPipe[2];
-//    int                                          aStdoutPipe[2];
-//    int                                          nResult;
-//    char                                         *str;
-//    std::map<std::string, std::string>::iterator it;
-//    HTTPStatus                                   http_status   = HTTP_INTERNAL_SERVER_ERROR;
-//    bool                                         header_parsed = false;
-//
-//    std::cout << "EXEC CGI STARTED" << std::endl;
-//
-//    getcwd(tmp, 500);
-//    std::string pwd(tmp);
-//    pipe(fd);
-//    it = _cgi_env.find("SCRIPT_FILENAME");
-//    argv[0] = new char[50 + 1];
-//    argv[1] = new char[60 + 1];
-//    argv[2] = nullptr;
-//    std::cout << "PATH TO CGI " << _cgi_path.data() << std::endl;
-//    strcpy(argv[0], _cgi_path.data());
-//    strcpy(argv[1], _cgi_path.data());//"/Users/megagosha/42/webserv/www/final/youpi.bla");
-//    std::cout << "ARGV 0 " << argv[0] << std::endl;
-////    std::cout << "ARGV 1 " <<argv[1] << std::endl;
-//
-//    std::string dir = it->second.substr(0, it->second.find_last_of('/'));
-////    chdir("/Users/megagosha/42/webserv/www/final/"); //@todo support relative paths
-//    if (pipe(aStdinPipe) < 0) {
-//        std::cout << "allocating pipe for child input redirect failed" << std::endl;
-//        return (HTTP_INTERNAL_SERVER_ERROR);
-//    }
-//    if (pipe(aStdoutPipe) < 0) {
-//        close(aStdinPipe[PIPE_READ]);
-//        close(aStdinPipe[PIPE_WRITE]);
-//        std::cout << "allocating pipe for child output redirect failed" << std::endl;
-//        return (HTTP_INTERNAL_SERVER_ERROR);
-//    }
-//
-//    str = new char[_cgi_path.size() + 1];
-//    strcpy(str, _cgi_path.data());
-//
-//    envp = Utils::mapToEnv(_cgi_env);
-//
-//    nChild = fork();
-//    if (0 == nChild) {
-//        if (dup2(aStdinPipe[PIPE_READ], STDIN_FILENO) == -1)
-//            exit(errno);
-//        if (dup2(aStdoutPipe[PIPE_WRITE], STDOUT_FILENO) == -1)
-//            exit(errno);
-//        if (dup2(aStdoutPipe[PIPE_WRITE], STDERR_FILENO) == -1)
-//            exit(errno);
-//
-//        // all these are for use by parent only
-//        close(aStdinPipe[PIPE_READ]);
-//        close(aStdinPipe[PIPE_WRITE]);
-//        close(aStdoutPipe[PIPE_READ]);
-//        close(aStdoutPipe[PIPE_WRITE]);
-//
-//
-//        nResult = execve(str, argv, envp);
-//        exit(0);
-//    } else if (nChild > 0) {
-//        size_t j = 0;
-//        Utils::clearNullArr(envp);
-//        close(aStdinPipe[PIPE_READ]);
-//
-//        if (!req->getBody().empty()) //@todo add pipe to kqueue here
-//        {
-//            size_t max     = 64000;
-//            size_t wrote   = 0;
-//            size_t r_write = 0;
-//            while (wrote < req->getBody().size()) {
-//                if (req->getBody().size() - wrote > max + wrote) {
-//                    r_write = write(aStdinPipe[PIPE_WRITE], req->getBody().data() + wrote, 64000);
-//                } else
-//                    r_write = write(aStdinPipe[PIPE_WRITE], req->getBody().data() + wrote,
-//                                    req->getBody().size() - wrote);
-//                if (r_write < 0)
-//                    return (HTTP_INTERNAL_SERVER_ERROR);
-//                wrote += r_write;
-//                r_write     = 0;
-//            }
-//
-////
-////
-//////			j = write(aStdinPipe[PIPE_WRITE], req->getBody().data(), req->getBody().size());
-////			std::cout << j << std::endl;
-//        } else
-//            j = write(aStdinPipe[PIPE_WRITE], "\r\n\r\n", 4);
-//
-//        close(aStdoutPipe[PIPE_WRITE]);
-//        //buffer size is limited. so we should try reading while child process is alive;
-//
-//        int          i;
-//        KqueueEvents kq(1);
-//        kq.addFd(aStdoutPipe[PIPE_READ]);
-//        std::cout << "Read end" << aStdoutPipe[PIPE_READ] << std::endl;
-////		kq.addProcess(nChild);
-//        std::pair<int, struct kevent *> res;
-//        while ((res = kq.getUpdates(5)).first >= 0) { //read should go through kqueue also
-//            std::cout << "Waiting for child output" << std::endl;
-//            if (res.first == -1)
-//                break;
-//            std::cout << "Upadtes recieved: " << res.first << std::endl;
-//            if (res.first == 0)
-//                continue;
-//            else if (res.second[0].filter == EVFILT_READ) {
-//                i = read(aStdoutPipe[PIPE_READ], &tmp, 64000);
-//                if (i > 0 && !header_parsed) {
-//                    if (_body_size == 0)
-//                        _body.insert(_body.end(), tmp, tmp + i);
-//
-//                    const char            *h_end = "\r\n\r\n";
-//                    std::string::iterator v_it;
-//                    v_it = std::search(_body.begin(), _body.end(), h_end, h_end + 4);
-//                    if (v_it == _body.end())
-//                        continue;
-//                    if (!ParseCgiHeaders(v_it - _body.begin()))
-//                        break;
-//
-//                    _body.erase(_body.begin(), v_it + 4);
-//                    header_parsed = true;
-//                    if (i < 64000 && _body.empty())
-//                        break;
-//
-////					_body_size = Utils::getContentLength(_response_headers);
-////					if (_body_size == 0)
-////					{
-////						_body.clear();
-////						http_status = HTTP_OK;
-////						break;
-////					}
-////					_body.insert(_body.end(), tmp, tmp + i);
-////					_body_size = _body.size();
-//                } else if (i < 0)
-//                    break;
-//                else if (i > 0 && header_parsed)
-//                    _body.insert(_body.end(), tmp, tmp + i);
-//                if (res.second[0].flags & EV_EOF)
-//                    std::cout << "EV_EOF FOUND!!!" << std::endl;
-//                if (i == 0) {
-//                    http_status = HTTP_OK;
-//                    _body_size  = _body.size();
-//                    break;
-//                }
-////				if (_body_size == _body.size())
-////				{
-////					http_status = HTTP_OK;
-////					break;
-////				}
-//
-//            } else if (res.second[0].flags & EV_ERROR)
-//                break;
-//        }
-//    } else {
-//        close(aStdinPipe[PIPE_READ]);
-//        close(aStdinPipe[PIPE_WRITE]);
-//        close(aStdoutPipe[PIPE_READ]);
-//        close(aStdoutPipe[PIPE_WRITE]);
-//        return (HTTP_INTERNAL_SERVER_ERROR);
-//    }
-//    waitpid(nChild, &status, WNOHANG);
-//    if (WIFEXITED(status)) {
-//        printf("Child exited with RC=%d\n", WEXITSTATUS(status));
-//    }
-//    if (WIFSIGNALED(status)) {
-//        printf("Child exited via signal %d\n", WTERMSIG(status));
-//    }
-//
-//    std::cout << "CGI RESPONSE |" << _body.size() << "|end" << std::endl;
-//    //@todo change dir back for relative path support
-//    if (http_status == HTTP_OK || (header_parsed && _body_size == 0)) {
-//        it = _response_headers.find("Status");
-//        if (it != _response_headers.end()) {
-//            http_status = static_cast<HTTPStatus>(atoi(it->second.data()));
-//            _response_headers.erase("Status");
-//        }
-//        _response_headers["Content-Length"] = std::to_string(_body_size);
-//    }
-//    return (http_status);
-//}
-
 void HttpResponse::prepareData() {
     std::map<std::string, std::string>::iterator it = _response_headers.begin();
 
     insertHeader("Content-Length", std::to_string(_body_size));
     setTimeHeader();
 
-    if ((it = _response_headers.find("Status")) != _response_headers.end())
-    {
+    if ((it = _response_headers.find("Status")) != _response_headers.end()) {
         _response_headers.erase(it);
 
     }
@@ -579,8 +404,8 @@ void HttpResponse::prepareData() {
         _headers_vec.push_back('\r');
         _headers_vec.push_back('\n');
     }
-        _headers_vec.push_back('\r');
-        _headers_vec.push_back('\n');
+    _headers_vec.push_back('\r');
+    _headers_vec.push_back('\n');
 }
 
 int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
@@ -614,7 +439,6 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         if (data_to_send > bytes)
             data_to_send = bytes;
         res              = send(fd, _body.data() + pos, data_to_send, 0);
-        //write(STDOUT_FILENO, _body.data() + pos, data_to_send);
         if (res < 0)
             return (-1);
         else
@@ -899,10 +723,10 @@ CgiHandler *HttpResponse::getCgi() const {
     return _cgi;
 }
 
-void HttpResponse::setCgi(CgiHandler *cgi)
-{
+void HttpResponse::setCgi(CgiHandler *cgi) {
     _cgi = cgi;
 }
+
 bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
     int    fd = _cgi->getRequestPipe();
     int    res;
@@ -914,7 +738,6 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
         size = req->getBody().size() - _cgi->getPos();
     res      = write(fd, req->getBody().data() + _cgi->getPos(), size);
     if (res > 0) {
-        std::cout << "bytes " << bytes << std::endl;
         _cgi->setPos(_cgi->getPos() + res);
     } else if (req->getBody().size() - _cgi->getPos() > 0 && res == 0) {
         return (false);
@@ -923,7 +746,7 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
 //        _cgi->setStatus(true);
         _cgi->setPos(0);
         close(fd);
-        _body.clear();
+//        _body.clear();
         return (true);
     } else {
         //@todo kill pid
@@ -957,6 +780,7 @@ bool HttpResponse::readCgi(size_t bytes, bool eof) {
     if (res == 0 || eof) {
         close(fd);
         _body_size = _body.size();
+        insertHeader("Content-Length", std::to_string(_body_size));
         setResponseString("HTTP/1.1", HTTP_OK);
         return (true);
     }
@@ -970,9 +794,9 @@ bool HttpResponse::ParseCgiHeaders(size_t end) {
     size_t pos = 0;
 
     while (pos < end && _body.find("\r\n\r\n", pos) != pos) {
-        if (!Utils::parse(_body, pos, ":", true, MAX_NAME, field_name))
+        if (!Utils::parse(_body, pos, ":", true, HttpRequest::MAX_NAME, field_name))
             break;
-        if (!Utils::parse(_body, ++pos, "\r\n", false, MAX_VALUE, field_value))
+        if (!Utils::parse(_body, ++pos, "\r\n", false, HttpRequest::MAX_VALUE, field_value))
             break;
         _response_headers.insert(std::make_pair(field_name, field_value));
     }
@@ -982,4 +806,20 @@ bool HttpResponse::ParseCgiHeaders(size_t end) {
     }
     return (true);
 }
+
+size_t HttpResponse::getMaxBodySize() {
+    size_t res = 0;
+    if (_loc != nullptr)
+        res = _loc->getMaxBody();
+    if (res == 0)
+        res = HttpRequest::MAX_DEFAULT_BODY_SIZE;
+    return res;
+}
+
+HttpResponse::HttpResponse(HttpResponse::HTTPStatus status) {
+    _cgi = nullptr;
+    setError(status, nullptr);
+
+}
+
 

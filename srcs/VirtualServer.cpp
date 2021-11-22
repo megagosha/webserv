@@ -117,7 +117,7 @@ bool VirtualServer::isDirectoryListingOn() const
 	return _directory_listing_on;
 }
 
-VirtualServer::VirtualServer()
+VirtualServer::VirtualServer() : _server_name("")
 {
 }
 
@@ -323,7 +323,6 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 	if (it == _locations.end())
 		return (nullptr);
 	Utils::removeLocFromUri(it->first, path);
-
 
 	if (!it->second.getRoot().empty())
 		path = getFullPath(it->second.getPath(), it->second.getRoot(), path);

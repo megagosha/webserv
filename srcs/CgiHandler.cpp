@@ -36,6 +36,8 @@ CgiHandler::~CgiHandler() {
     }
     _mng->unsubscribe(_cgi_pid, EVFILT_PROC);
     std::cout << "CGI DIED" << std::endl;
+    std::cout << "Exit status was " << WEXITSTATUS(_exit_status) << std::endl;
+
 }
 
 pid_t CgiHandler::getCgiPid() const {
@@ -68,7 +70,7 @@ bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute
     _env["AUTH_TYPE"]      = "";
 //	if (!request.getBody().empty())
 //	{
-    _env["CONTENT_LENGTH"] = std::to_string(request->getBody().size());
+    _env["CONTENT_LENGTH"] = std::to_string(request->getContentLength());
     std::map<std::string, std::string>::iterator it = request->getHeaderFields().find("Content-Type");
     if (it != request->getHeaderFields().end())
         _env["CONTENT_TYPE"] = it->second;
