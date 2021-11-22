@@ -14,7 +14,7 @@ Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_
                                        _status(rhs._status),
                                        _connection_timeout(rhs._connection_timeout), _mng(rhs._mng) {
     setResponse(rhs._response);
-    setRequest(rhs._request);
+    _request = rhs._request;
 }
 
 Session &Session::operator=(const Session &rhs) {
@@ -27,7 +27,7 @@ Session &Session::operator=(const Session &rhs) {
     _connection_timeout = rhs._connection_timeout;
     _mng                = rhs._mng;
     setResponse(rhs._response);
-    setRequest(rhs._request);
+    _request = rhs._request;
     return (*this);
 }
 
@@ -66,30 +66,21 @@ const HttpResponse *Session::getResponse() const {
     return _response;
 }
 
-void Session::setResponse(const HttpResponse *response) {
+void Session::setResponse(HttpResponse *response) {
 
     if (_response != nullptr) {
 //		delete _response; @todo fix memory err
         _response = nullptr;
         return;
     }
-    _response = new HttpResponse(*response);
+    _response = response;
 }
 
 HttpRequest *Session::getRequest() const {
     return _request;
 }
 
-void Session::setRequest(HttpRequest *request) {
-//    if (_request != nullptr) {
-//        //delete _request; // @todo fix memory err
-//    }
-    if (request == nullptr) {
-        _request = nullptr;
-        return;
-    }
-    _request = new HttpRequest(*request);
-}
+
 
 bool Session::isKeepAlive() const {
     return _keep_alive;
@@ -122,19 +113,22 @@ void Session::parseRequest(size_t bytes) {
         end();
     }
     size_t      pos = 0;
-    if (_request == nullptr)
-        _request = new HttpRequest(this, getIpFromSock(), bytes);
-    else if (_request->getRequestUri().empty())
-        _request->parseRequestMessage(this, pos);
+    if (_request == nullptr) {
+        _request = new HttpRequest(getIpFromSock());
+    }
+    if (_request->getRequestUri().empty())
+        _request->parseRequestMessage(this, pos, _server_socket);
     else
         _request->appendBody(this, pos);
     if (_request->isReady()) {
+        if (_response == nullptr)
+            _response = new HttpResponse(static_cast<HttpResponse::HTTPStatus>(_request->getParsingError()));
         _buffer.clear();
     }
     if (!_request->getRequestUri().empty()) {
         std::map<std::string, std::string>::const_iterator it;
         it              = _request->getHeaderFields().find("Connection");
-        if (it != _request->getHeaderFields().end() && it->second == "close")
+        if ((it != _request->getHeaderFields().end() && it->second == "close") || _request->getParsingError() == HttpResponse::HTTP_BAD_REQUEST)
             _keep_alive = false;
         else
             _keep_alive = true;
@@ -144,16 +138,18 @@ void Session::parseRequest(size_t bytes) {
 
 void Session::prepareResponse() {
     std::string   path;
-    VirtualServer *config = _server_socket->getServerByHostHeader(
-            _request->getHeaderFields());
-    std::cout << "res " << config->getServerName() << std::endl;
+//    VirtualServer *config = _server_socket->getServerByHostHeader(
+//            _request->getHeaderFields());
+//    std::cout << "res " << config->getServerName() << std::endl;
     //@todo null check
-    _response = new HttpResponse(*this, config, _mng);
+    if (_response != nullptr)
+        _response->responsePrepare(_request, _mng);
+//    _response = new HttpResponse(*this, config, _mng);
     if (_keep_alive) {
         _response->insertHeader("Connection", "Keep-Alive");
         _response->insertHeader("Keep-Alive", "timeout=5");
     }
-    if (_response->getCgi() != nullptr) {
+    if (_response->getCgi() != nullptr && _response->getStatusCode() == HttpResponse::HTTP_OK) {
         _status = CGI_PROCESSING;
     } else
         _status = SENDING;
@@ -171,6 +167,7 @@ bool Session::writeCgi(size_t bytes, bool eof) {
 
 bool Session::readCgi(size_t bytes, bool eof) {
     if (_response->readCgi(bytes, eof)) {
+
 //        if (!_response->getCgi()->cgiEnd())
 //            std::cout << "cgi fast quit" << std::endl;
 //            _response->setError(HttpResponse::HTTP_INTERNAL_SERVER_ERROR, nullptr);
@@ -286,6 +283,8 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
         end();
     else if (_status == AWAIT_NEW_REQ && filter == EVFILT_READ && fd == _fd) {
         parseRequest(bytes_available);
+        if (_request->getMethod() == "HEAD")
+            std::cout << "Yo" << std::endl;
         if (_request->isReady())
             prepareResponse();
     } else if (_status == CGI_PROCESSING && filter == EVFILT_WRITE && fd == _response->getCgi()->getRequestPipe()) {
@@ -309,8 +308,13 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
     }
 }
 
-Session::SessionException::SessionException(const std::string &msg) {
+IManager *Session::getMng() const {
+    return _mng;
+}
 
+Session::SessionException::SessionException(const std::string &msg) {
+    std::cout << msg << std::endl;
+    throw;
 }
 
 Session::SessionException::~SessionException() throw() {

@@ -127,7 +127,13 @@ void Server::apply(VirtualServer &serv) {
 }
 
 void Server::subscribe(int fd, short type, ISubscriber *obj) {
-    _kq.addFd(fd, type);
+    try {
+        _kq.addFd(fd, type);
+    }
+    catch (std::exception  &e)
+    {
+        std::cout << e.what() << std::endl;
+    }
     _subs.insert(std::map<int, ISubscriber *>::value_type(fd, obj));
 }
 
@@ -148,7 +154,8 @@ void Server::removeExpiredSessions() {
     std::vector<int> to_delete;
     to_delete.reserve(_sessions.size());
     for (std::map<int, Session *>::iterator sess_it = _sessions.begin(); sess_it != _sessions.end(); ++sess_it) {
-        if (sess_it->second->shouldClose()) {
+        if (sess_it->second->getStatus() == Session::AWAIT_NEW_REQ &&
+        sess_it->second->shouldClose()) {
             sess_it->second->end();
             to_delete.push_back(sess_it->first);
         }

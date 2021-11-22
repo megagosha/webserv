@@ -222,7 +222,8 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 		if (*it == "client_max_body_size")
 		{
 			Utils::skipTokens(it, end, 1);
-			_max_body = std::stoul(*it) * 1000000; // value given in mb
+            std::cout << _path << " *it: " << *it << " stoul: " << std::stoul(*it) << std::endl;
+			_max_body = std::stoul(*it); // value given in mb
 			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "file_upload")

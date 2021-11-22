@@ -17,7 +17,6 @@
 #include "IManager.hpp"
 
 class HttpResponse;
-
 class HttpRequest;
 
 class Socket;
@@ -36,6 +35,9 @@ private:
     static const int HTTP_DEFAULT_TIMEOUT = 5;
     std::string      _buffer;
     IManager         *_mng;
+public:
+    IManager *getMng() const;
+
 public:
     const std::string &getBuffer() const;
 
@@ -83,7 +85,7 @@ public:
 
     const HttpResponse *getResponse() const;
 
-    void setResponse(const HttpResponse *response);
+    void setResponse(HttpResponse *response);
 
     HttpRequest *getRequest() const;
 

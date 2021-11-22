@@ -82,12 +82,15 @@ void KqueueEvents::addFd(int fd, short type)
 {
 	_fds.insert(fd);
 
+    uint64_t  t_fd = fd;
     uint32_t fflags = 0;
     if (type == EVFILT_PROC)
         fflags = NOTE_EXIT;
-	EV_SET(_w_event, fd, type, EV_ADD, fflags, 0, NULL);
-	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
-		throw KqueueException();
+	EV_SET(_w_event, t_fd, type, EV_ADD, fflags, 0, NULL);
+	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1) {
+        std::cout << strerror(errno) << std::endl;
+        throw KqueueException();
+    }
 //	if (write)
 //	{
 //		EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);

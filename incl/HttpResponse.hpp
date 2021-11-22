@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "IManager.hpp"
+
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
@@ -124,6 +125,9 @@ private:
     CgiHandler                         *_cgi;
     std::vector<char>                  _headers_vec;
     size_t                             _pos;
+    const VirtualServer                *_config;
+    const Location                           *_loc;
+
 
 
 public:
@@ -159,6 +163,7 @@ public:
 
     HttpResponse(
             const HttpResponse &rhs);
+    HttpResponse(HTTPStatus status);
 
     HttpResponse &operator=(const HttpResponse &rhs);
 
@@ -178,10 +183,12 @@ public:
 
     size_t getBodySize() const;
 
+    bool responsePrepare(HttpRequest *req, IManager *mng);
+
     HTTPStatus executeCgi(HttpRequest *req);
 
     HttpResponse(Session &session,
-                 const VirtualServer *config, IManager *mng);
+                 const VirtualServer *config);
 
     void processGetRequest(const VirtualServer *serv, const Location *loc, HttpRequest *req);
 
@@ -197,6 +204,8 @@ public:
     void prepareData();
 
     void insertTableIntoBody(const std::string &str, const std::string &uri);
+
+    size_t getMaxBodySize();
 
     void getAutoIndex(const std::string &path, const std::string &uri_path);
 
