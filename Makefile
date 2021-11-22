@@ -12,13 +12,12 @@ SRC_FILES	= check.cpp \
 				FileStats.cpp \
 				CgiHandler.cpp
 
-
 NAME	= webserv
 
 CC		= clang++ -fsanitize=address
 RM		= rm -f
 
-CFLAGS	= -Wall -Wextra -Werror
+CFLAGS	= -Wall -Wextra -Werror -std=c++98 -pedantic
 
 INCLUDES_DIR = ./incl
 SRCS_DIR = ./srcs

@@ -9,12 +9,12 @@
 server {
     listen 127.0.0.1;
     port 8080;
-    error_page 404 /Users/megagosha/42/webserv/www/error/404.html;
-    error_page 405 /Users/megagosha/42/webserv/www/error/405.html;
-    client_max_body_size 100000000;
+    error_page 404 /Users/sergeykozlov/wsrv12/www/error/404.html;
+    error_page 405 /Users/sergeykozlov/wsrv12/www/error/405.html;
+    client_max_body_size 1024;
 
  location / {
-    root /Users/megagosha/42/webserv/www/final/;
+    root /Users/sergeykozlov/wsrv12/www/final/;
     methods POST GET;
     autoindex on; #turned on by default;
     #index index.html; #specify default file
@@ -22,31 +22,32 @@ server {
 
  location /images/hero.jpg
  {
-    root /Users/megagosha/42/webserv/www/final/;
+    root /Users/sergeykozlov/wsrv12/www/final/;
     return /images/profile.jpg;
  }
  location /upload
  {
-     root /Users/megagosha/42/webserv/www/final/;
+     root /Users/sergeykozlov/wsrv12/www/final/;
      file_upload on;
      methods POST GET DELETE PUT;
  }
 
 location /images
  {
-    root /Users/megagosha/42/webserv/www/final/images/;
+    root /Users/sergeykozlov/wsrv12/www/final/images/;
     autoindex on;
     methods POST GET DELETE;
  }
  location *.php {
-    root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-    cgi_pass /opt/homebrew/opt/php@7.4/bin/php-cgi; #IS NOT VALID CGI specify full path
+    root /Users/sergeykozlov/wsrv12/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+    cgi_pass /usr/local/bin/php-cgi; #IS NOT VALID CGI specify full path
  }
   location *.bla {
+     root /Users/sergeykozlov/wsrv12/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+     cgi_pass /Users/sergeykozlov/wsrv12/cgi_tester; #IS NOT VALID CGI specify full path
       client_max_body_size 300000000;
-     root /Users/megagosha/42/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-     cgi_pass /Users/megagosha/Downloads/cgi_tester; #IS NOT VALID CGI specify full path
   }
+  mime_conf_path /Users/sergeykozlov/wsrv12/mime.conf
 }
 server {
     listen 127.0.0.1;
@@ -54,35 +55,37 @@ server {
     server_name localhost;
     client_max_body_size 1024;
  location / {
-    root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/;
+    root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/;
     methods GET;
     autoindex on;
  }
  location /put_test
  {
-    root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/upload/;
+    root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/upload/;
     file_upload on;
     methods GET PUT;
  }
   location *.bla {
-      client_max_body_size 300000000;
-     root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
-     cgi_pass /Users/megagosha/Downloads/cgi_tester;
+     root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
+     cgi_pass /Users/sergeykozlov/wsrv12/cgi_tester;
+     client_max_body_size 300000000;
      methods POST GET;
   }
   location /post_body
   {
-  client_max_body_size 100;
+      root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/;
+      client_max_body_size 100;
       root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/;
       methods POST;
   }
   location /directory
   {
-    root /Users/megagosha/42/webserv/www/42_tester/YoupiBanane/;
+    root /Users/sergeykozlov/wsrv12/www/42_tester/YoupiBanane/;
     methods GET POST;
     index youpi.bad_extension;
     autoindex off;
   }
+    mime_conf_path /Users/sergeykozlov/wsrv12/mime.conf
  }
 
 # server {

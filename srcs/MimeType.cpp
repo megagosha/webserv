@@ -14,6 +14,7 @@ MimeType::MimeType(const std::string &path_to_conf)
 {
 	std::list<std::string> res;
 
+	std::cout << "mimeconf: " << path_to_conf << std::endl;
 	Utils::tokenizeFileStream(path_to_conf, res);
 	std::list<std::string>::iterator it = res.begin();
 	std::list<std::string>::iterator end = res.end();

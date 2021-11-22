@@ -124,8 +124,7 @@ HttpResponse::HttpResponse(const HttpResponse &rhs) :
         _pos(rhs._pos)
 //        _cgi_env(rhs._cgi_env),
 //_cgi_path(rhs._cgi_path)
-{
-};
+{}
 
 HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
     if (this == &rhs)
@@ -242,7 +241,7 @@ void HttpResponse::setResponseString(const std::string &pr, HTTPStatus status) {
 }
 
 HttpResponse::HTTPStatus HttpResponse::writeFileToBuffer(const std::string &file_path) {
-    long long int length;
+    unsigned long length;
     std::ifstream file(file_path, std::ifstream::in | std::ifstream::binary);
     if (file) {
         file.seekg(0, file.end);
@@ -440,7 +439,6 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         if (data_to_send > bytes)
             data_to_send = bytes;
         res              = send(fd, _body.data() + pos, data_to_send, 0);
-//        write(STDOUT_FILENO, _body.data() + pos, data_to_send);
         if (res < 0)
             return (-1);
         else
@@ -763,7 +761,7 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
 }
 
 bool HttpResponse::readCgi(size_t bytes, bool eof) {
-    char tmp[bytes];
+    char tmp[1048576];//@todo replace constant with define (was bytes - VLA)
     int  res;
     int  fd = _cgi->getResponsePipe();
 

@@ -4,3 +4,5 @@ a.out
 objs/*
 webserv
 settings.json
+tester
+cgi_tester
