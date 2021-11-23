@@ -22,7 +22,7 @@
 #include "MimeType.hpp"
 
 #define MAX_AWAIT_CONN 200
-#define MAX_KQUEUE_EV 100
+#define MAX_KQUEUE_EV 5
 
 class Socket;
 

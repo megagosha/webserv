@@ -131,7 +131,7 @@ void Session::parseRequest(size_t bytes) {
         if ((it != _request->getHeaderFields().end() && it->second == "close") || _request->getParsingError() == HttpResponse::HTTP_BAD_REQUEST)
             _keep_alive = false;
         else
-            _keep_alive = true;
+            _keep_alive = false;
     }
     std::time(&_connection_timeout);
 }

@@ -121,19 +121,19 @@ bool HttpRequest::processHeaders() {
     return (true);
 }
 
-bool HttpRequest::setErrorResponse(uint16_t status)
-{
-    _ready = true;
+bool HttpRequest::setErrorResponse(uint16_t status) {
+    _ready         = true;
     _parsing_error = status;
     return (true);
 }
+
 /*
  * Attempt to process request. If end of request message is found, message will be processed.
  * If not, request is appended to buffer and parsing is not performed.
  */
 bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos, Socket *sock) {
 
-    bool              res  = false;
+    bool         res = false;
     HttpResponse *resp;
 
     const std::string &req = sess->getBuffer();
@@ -167,7 +167,7 @@ bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos, Socket *sock) 
 //        sess->setKeepAlive(false);
 //        return (true);
 //    }
-     if (_content_length > _max_body_size) {
+    if (_content_length > _max_body_size) {
         _parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
         resp->setError(HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE, serv);
 //        _ready         = true;
@@ -180,7 +180,8 @@ bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos, Socket *sock) 
 }
 
 HttpRequest::HttpRequest(const std::string client_ip)
-        : _chunked(false), _client_ip(client_ip), _content_length(0), _ready(false), _parsing_error(HttpResponse::HTTP_OK), _chunk_length(),
+        : _chunked(false), _client_ip(client_ip), _content_length(0), _ready(false),
+          _parsing_error(HttpResponse::HTTP_OK), _chunk_length(),
           _c_bytes_left(0), _skip_n(0) {
 
 }
@@ -193,17 +194,18 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos) {
     }
     if (_chunked) {
         if (parseChunked(sess, pos, buff.size())) {
-            std::cout << "parsing error is " << _parsing_error << std::endl<<std::endl;
+//            std::cout << "parsing error is " << _parsing_error << std::endl<<std::endl;
             std::map<std::string, std::string>::iterator m_it = _header_fields.find("Transfer-Encoding");
             if (m_it != _header_fields.end() && m_it->second.find("chunked") != std::string::npos) {
                 _header_fields["Content-Length"] = std::to_string(_body.size());
                 _header_fields.erase(m_it);
             }
-            _ready = true;
+            _ready          = true;
             _content_length = _body.size();
             return (true);
-        } else {            std::cout << "parsing error is " << _parsing_error << std::endl<<std::endl;
-            return (false);}
+        } else {            //std::cout << "parsing error is " << _parsing_error << std::endl<<std::endl;
+            return (false);
+        }
     } else {
         size_t len;
         if (_parsing_error == HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE && _content_length > 0)
@@ -281,12 +283,23 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
             ++pos;
             --_skip_n;
         }
-        while (_c_bytes_left > 0 && bytes > pos) {
-            if (_parsing_error == HttpResponse::HTTP_OK)
-                _body += request[pos];
-            --_c_bytes_left;
-            ++pos;
+        if (pos < bytes) {
+//        while (_c_bytes_left > 0 && bytes > pos) {
+            unsigned long end = 0;
+            if (_c_bytes_left >= bytes - pos)
+                end = bytes - pos;
+            else
+                end = _c_bytes_left;
+            if (_parsing_error == HttpResponse::HTTP_OK) {
+                _body.append(request.data() + pos, end);
+            }
+//                _body += request[pos];
+            _c_bytes_left -= end;
+            pos += end;
         }
+
+        //++pos;
+//        }
         if (_c_bytes_left == 0)
             _skip_n += 2;
 
@@ -340,8 +353,7 @@ HttpRequest::HttpRequest(
                                   _parsing_error(rhs._parsing_error),
                                   _chunk_length(rhs._chunk_length),
                                   _c_bytes_left(rhs._c_bytes_left),
-                                  _skip_n(rhs._skip_n) 
-{}
+                                  _skip_n(rhs._skip_n) {}
 
 HttpRequest &HttpRequest::operator=(const HttpRequest &rhs) {
     if (this == &rhs)
