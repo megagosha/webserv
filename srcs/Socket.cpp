@@ -90,6 +90,13 @@ Socket &Socket::operator=(const Socket &rhs) {
 //	appendVirtualServer(serv);
 //};
 
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET)
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 std::pair<int, Session *> Socket::acceptConnection() {
     int                                               new_fd;
@@ -102,6 +109,7 @@ std::pair<int, Session *> Socket::acceptConnection() {
     if (new_fd < 0)
         throw SocketException("Failed to open connection");
     Session *sess = new Session(new_fd, this, s_addr, _serv);
+
     _sessions.insert(std::make_pair(new_fd, sess));
     return (std::make_pair(new_fd, sess));
 }

@@ -6,7 +6,7 @@
 #include <iostream>
 
 KqueueEvents::KqueueEvents() : _max_size(0)
-{};
+{}
 
 int KqueueEvents::getQueueFd(void) const
 {
@@ -70,13 +70,13 @@ KqueueEvents::~KqueueEvents()
 	delete _w_event;
 	delete[] _res_event;
 }
-void KqueueEvents::addWriteOnly(int fd)
-{
-    _fds.insert(fd);
-    EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-    if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
-        throw KqueueException();
-}
+//void KqueueEvents::addWriteOnly(int fd)
+//{
+//    _fds.insert(fd);
+//    EV_SET(_w_event, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
+//    if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+//        throw KqueueException();
+//}
 
 void KqueueEvents::addFd(int fd, short type)
 {
@@ -99,18 +99,23 @@ void KqueueEvents::addFd(int fd, short type)
 //	}
 }
 
-void KqueueEvents::addProcess(pid_t proc)
-{
-	EV_SET(_w_event, proc, EVFILT_PROC, EV_ADD, 0, 0, NULL);
-	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
-		throw KqueueException();
-}
+//void KqueueEvents::addProcess(pid_t proc)
+//{
+//	EV_SET(_w_event, proc, EVFILT_PROC, EV_ADD, 0, 0, NULL);
+//	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+//		throw KqueueException();
+//}
 
 void KqueueEvents::deleteFd(int fd, short type)
 {
 	_fds.erase(fd);
 	EV_SET(_w_event, fd, type, EV_DELETE, 0, 0, NULL);
-	kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr);
+	if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1)
+    {
+        if (type != EVFILT_PROC)
+            throw KqueueException();
+    }
+    std::cout << "unsub for " << fd << std::endl;
 //	if (write)
 //	{
 //		EV_SET(_w_event, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
@@ -125,7 +130,12 @@ std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout)
 //	std::cout << "kq max size " << _max_size << std::endl;
 //std::cout << ".";
 	int res = kevent(_queue_fd, NULL, 0, _res_event, _max_size, &tmout);
-	return (std::make_pair(res, _res_event));
+	if (res == -1) {
+        std::cout << "KQUEUE THROW" << std::endl;
+
+//        throw KqueueException();
+    }
+    return (std::make_pair(res, _res_event));
 }
 
 const char *KqueueEvents::KqueueException::what() const _NOEXCEPT

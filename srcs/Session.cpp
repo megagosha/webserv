@@ -31,11 +31,29 @@ Session &Session::operator=(const Session &rhs) {
     return (*this);
 }
 
+std::string Session::getClientPort() const {
+    struct sockaddr_in *sin = (struct sockaddr_in *) &_s_addr;
+    uint16_t           port;
+
+    port = htons (sin->sin_port);
+    return (std::to_string(port));
+}
+
+std::string Session::getClientIp() const {
+    struct sockaddr_in *sin = (struct sockaddr_in *) &_s_addr;
+    char               ip[INET_ADDRSTRLEN];
+
+    inet_ntop(AF_INET, &(sin->sin_addr), ip, INET_ADDRSTRLEN);
+    return (ip);
+}
+
 Session::Session(int socket_fd, Socket *server_socket, sockaddr addr, IManager *mng) :
         _fd(socket_fd), _server_socket(server_socket), _response(nullptr), _request(nullptr), _s_addr(addr),
         _keep_alive(false),
         _status(AWAIT_NEW_REQ), _connection_timeout(), _mng(mng) {
     std::time(&_connection_timeout);
+    std::cout << "Session created:" << std::endl<<"Client ip: " << getClientIp() << " port: " << getClientPort() << std::endl;
+
     mng->subscribe(socket_fd, EVFILT_READ, this);
 }
 
@@ -79,7 +97,6 @@ void Session::setResponse(HttpResponse *response) {
 HttpRequest *Session::getRequest() const {
     return _request;
 }
-
 
 
 bool Session::isKeepAlive() const {
@@ -128,16 +145,21 @@ void Session::parseRequest(size_t bytes) {
     if (!_request->getRequestUri().empty()) {
         std::map<std::string, std::string>::const_iterator it;
         it              = _request->getHeaderFields().find("Connection");
-        if ((it != _request->getHeaderFields().end() && it->second == "close") || _request->getParsingError() == HttpResponse::HTTP_BAD_REQUEST)
+        if ((it != _request->getHeaderFields().end() && it->second == "close") ||
+            _request->getParsingError() == HttpResponse::HTTP_BAD_REQUEST)
             _keep_alive = false;
         else
-            _keep_alive = false;
+            _keep_alive = true;
+    }
+    if (_request->isReady() && !_keep_alive) {
+        std::cout << "shutdown sent for ip: " << getClientIp() << " port: " << getClientPort() << std::endl;
+        shutdown(_fd, SHUT_RD);
     }
     std::time(&_connection_timeout);
 }
 
 void Session::prepareResponse() {
-    std::string   path;
+    std::string path;
 //    VirtualServer *config = _server_socket->getServerByHostHeader(
 //            _request->getHeaderFields());
 //    std::cout << "res " << config->getServerName() << std::endl;
@@ -193,7 +215,8 @@ bool Session::shouldClose() {
 }
 
 void Session::end() {
-    std::cout << "Session closed" << std::endl;
+    std::cout << "Session closed: " << std::endl;
+    std::cout << "Client ip: " << getClientIp() << " port: " << getClientPort() << std::endl;
     if (_status == TIMEOUT) {
         _response = new HttpResponse(HttpResponse::HTTP_REQUEST_TIMEOUT, _server_socket->getDefaultConfig());
 //        _response->sendResponse(_fd, nullptr);
@@ -223,8 +246,10 @@ void Session::clearBuffer(void) {
     _buffer.clear();
 }
 
-void Session::processResponse(size_t bytes) {
-    if (_response->sendResponse(_fd, _request, bytes) == 1) {
+void Session::processResponse(size_t bytes, bool eof) {
+    if (eof || _response->sendResponse(_fd, _request, bytes) == 1) {
+        if (eof)
+            std::cout << "CLIENT DISCONECTED" << std::endl;
         if (!_keep_alive)
             _status = CLOSING;
         else
@@ -292,7 +317,7 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
     } else if (_status == CGI_PROCESSING && filter == EVFILT_READ && fd == _response->getCgi()->getResponsePipe()) {
         readCgi(bytes_available, eof);
     } else if (_status == SENDING && fd == _fd) {
-        processResponse(bytes_available);
+        processResponse(bytes_available, eof);
     } else if (_fd == fd && eof) {
         _status = CLOSING;
     }

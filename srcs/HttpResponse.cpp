@@ -75,7 +75,6 @@ HttpResponse::HttpResponse(Session &session, const VirtualServer *config) {
 
 
 bool HttpResponse::responsePrepare(HttpRequest *req, IManager *mng) {
-    std::cout << "!!!Normalized path: " << req->getNormalizedPath() << std::endl;
 
 //    if (!_loc->getCgiPass().empty()) {
 //        if (executeCgi(req) != HTTP_OK) {
@@ -84,8 +83,7 @@ bool HttpResponse::responsePrepare(HttpRequest *req, IManager *mng) {
 //        }
 //        return;
 //    } else
-    if (req->getParsingError() != HTTP_OK)
-    {
+    if (req->getParsingError() != HTTP_OK) {
         setError(static_cast<HTTPStatus>(req->getParsingError()), _config);
         return false;
     }
@@ -97,6 +95,7 @@ bool HttpResponse::responsePrepare(HttpRequest *req, IManager *mng) {
             delete _cgi;
             setError(HTTP_INTERNAL_SERVER_ERROR, _config);
         }
+        return false;
     }
     if (_status_code != HTTP_OK && _status_code != 0)
         setResponseString("HTTP/1.1", static_cast<HTTPStatus>(_status_code));
@@ -194,7 +193,7 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
     if (rf) {
         rf.write(req->getBody().data(), req->getBody().size());
         rf.close();
-        insertHeader("Content-Location", loc->getPath() + file_name);
+        insertHeader("Content-Location", loc->getPath() + "/" + file_name);
         return;
     } else {
         setError(HTTP_INTERNAL_SERVER_ERROR, serv);
@@ -372,6 +371,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
         _cgi->setCgiPid(child_pid);
         _cgi->setResponsePipe(out_pipe[PIPE_READ]);
     } else {
+        std::cout << "FOR FAILED" << std::endl << std::endl;
         free(env);
         close(in_pipe[PIPE_READ]);
         close(in_pipe[PIPE_WRITE]);
@@ -410,40 +410,89 @@ void HttpResponse::prepareData() {
 
 int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
 
-    size_t pos;
-    size_t data_to_send = 0;
-    int    res;
+    /*
+     * 1. if bytes == 0 || eof return;
+     * 2. _headers_parsed bool;
+     * 3. If _pos < _headers.size()
+     *   if _headers.size() - _pos > bytes
+     *      to_send = _bytes;
+     *   else
+     *      to_send = _headers.size() - _pos;
+     *   res = send
+     *   if (res > 0)
+     *      _pos += res;
+     *
+     *
+     *
+     *
+     */
+
+
+    size_t  pos          = 0;
+//    size_t  data_to_send = 0;
+    ssize_t res          = 0;
 
     if (_headers_vec.empty())
         prepareData();
 
-    pos = _pos;
-    if (_pos < _headers_vec.size()) {
-        data_to_send     = _headers_vec.size() - pos;
-        if (data_to_send > bytes)
-            data_to_send = bytes;
-        res              = send(fd, _headers_vec.data() + pos, data_to_send, 0);
-        if (res < 0)
-            return (-1);
-        else
-            _pos += res;
-        write(STDOUT_FILENO, _headers_vec.data(), _headers_vec.size());
-    }
-    if (req->getMethod() == "HEAD")
-        return (1);
+    std::cout << "1. bytes: " << bytes << " res " << res << " fd: " << fd << std::endl;
 
-    bytes -= data_to_send;
-    if (!_body.empty() && bytes > 0) {
-        pos              = _pos - _headers_vec.size();
-        data_to_send     = _body_size - pos;
-        if (data_to_send > bytes)
-            data_to_send = bytes;
-        res              = send(fd, _body.data() + pos, data_to_send, 0);
+    size_t to_send = 0;
+    if (_pos < _headers_vec.size()) {
+        pos         = _pos;
+        if (_headers_vec.size() - pos > bytes)
+            to_send = bytes;
+        else
+            to_send = _headers_vec.size() - pos;
+        res         = send(fd, _headers_vec.data() + pos, to_send, 0);
         if (res < 0)
             return (-1);
+        _pos += res;
+        bytes -= res;
+    } else if (req->getMethod() == "HEAD")
+        return (1);
+    else if (!_body.empty() && bytes > 0 && _body.size() > _pos - _headers_vec.size()) {
+        pos         = _pos - _headers_vec.size();
+        if (_body.size() - pos > bytes)
+            to_send = bytes;
         else
-            _pos += res;
+            to_send = _body.size() - pos;
+        res         = send(fd, _body.data() + pos, to_send, 0);
+        if (res < 0)
+            return (-1);
+        _pos += res;
     }
+
+
+//    if (_pos < _headers_vec.size()) {
+//        data_to_send     = _headers_vec.size() - pos;
+//        if (data_to_send > bytes)
+//            data_to_send = bytes;
+//        res              = send(fd, _headers_vec.data() + pos, data_to_send, 0);
+//        if (res < 0)
+//            return (-1);
+//        else
+//            _pos += res;
+//        std::cout << _response_string;
+//    }
+//
+//    std::cout << "1. bytes: " << bytes << " res " << res << " fd: " << fd << std::endl;
+//    bytes -= res;
+//    if (!_body.empty() && bytes > 0 && _pos >= _headers_vec.size()) {
+//        pos              = _pos - _headers_vec.size();
+//        data_to_send     = _body_size - pos;
+//        if (data_to_send > bytes)
+//            data_to_send = bytes;
+//        res              = send(fd, _body.data() + pos, data_to_send, 0);
+//        if (res < 0)
+//            return (-1);
+//        else
+//            _pos += res;
+//    }
+    std::cout << "2. bytes: " << bytes << " res " << res << " fd: " << fd << std::endl;
+    float bytes_written;
+    bytes_written = (float)_pos / (((float)_body.size() + (float)_headers_vec.size()) / 100);
+    std::cout << "fd: " << fd << " bytes written " << bytes_written << "%" << std::endl;
     if (_pos == _headers_vec.size() + _body.size())
         return (1);
     return (0);
@@ -742,10 +791,10 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
     } else if (req->getBody().size() - _cgi->getPos() > 0 && res == 0) {
         return (false);
     } else if (_cgi->getPos() == req->getBody().size()) {
-        std::cout << "complete writing into cgi " << std::endl;
+        std::cout << "CGI request pipe closed" << std::endl;
 //        _cgi->setStatus(true);
         _cgi->setPos(0);
-        close(fd);
+//        close(fd);
 //        _body.clear();
         return (true);
     } else {
@@ -771,14 +820,16 @@ bool HttpResponse::readCgi(size_t bytes, bool eof) {
     if (!_cgi->isHeadersParsed() && (pos = _body.find("\r\n\r\n")) != std::string::npos) {
         if (!ParseCgiHeaders(pos)) {
             setError(HTTP_INTERNAL_SERVER_ERROR, nullptr);
+            close(fd);
             return (false);
         }
         _cgi->setHeadersParsed(true);
         _body.erase(_body.begin(), _body.begin() + pos + 4);
     }
 
-    if (res == 0 || eof) {
-        close(fd);
+    if (eof) {
+        std::cout << "CGI response pipe closed" << std::endl;
+//        close(fd);
         _body_size = _body.size();
         insertHeader("Content-Length", std::to_string(_body_size));
         setResponseString("HTTP/1.1", HTTP_OK);
@@ -818,6 +869,7 @@ size_t HttpResponse::getMaxBodySize() {
 
 HttpResponse::HttpResponse(HttpResponse::HTTPStatus status) {
     _cgi = nullptr;
+    _pos = 0;
     setError(status, nullptr);
 
 }

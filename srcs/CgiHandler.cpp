@@ -30,11 +30,15 @@ CgiHandler &CgiHandler::operator=(const CgiHandler &rhs) {
 }
 
 CgiHandler::~CgiHandler() {
+    _mng->unsubscribe(_cgi_pid, EVFILT_PROC);
     if (waitpid(_cgi_pid, &_exit_status, WNOHANG) == 0) {
         std::cout << "CGI GOT KILLED" << std::endl;
         kill(_cgi_pid, SIGKILL);
     }
-    _mng->unsubscribe(_cgi_pid, EVFILT_PROC);
+    if (_response_pipe != -1)
+        close(_response_pipe);
+    if (_request_pipe != -1)
+        close(_request_pipe);
     std::cout << "CGI DIED" << std::endl;
     std::cout << "Exit status was " << WEXITSTATUS(_exit_status) << std::endl;
 
@@ -77,11 +81,14 @@ bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute
     else
         _env["CONTENT_TYPE"]  = "";
 //	}
+
     _env["GATEWAY_INTERFACE"] = std::string("CGI/1.1");
 //    std::string path_info = absolute_path.substr(absolute_path.find_last_of('/') + 1);
     if (!cgi_exec.empty())
-		_env["SCRIPT_NAME"] = "/Users/sergeykozlov/wsrv12/cgi_tester"; //cgi_exec;//"/index.php";//request.getRequestUri();
-	//@todo remove hardcoded path
+		_env["SCRIPT_NAME"] = cgi_exec; //cgi_exec;//"/index.php";//request.getRequestUri();
+	else
+        _env["SCRIPT_NAME"] = "";
+        //@todo remove hardcoded path
 	_env["SCRIPT_FILENAME"]   = absolute_path;
 
     _env["PATH_TRANSLATED"] = request->getRequestUri(); //@todo add additional string manipulation as in rfc
@@ -114,9 +121,9 @@ bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute
         it = tmp_map_iter;
     }
     _env.insert(tmp_map.begin(), tmp_map.end());
-    for (it = _env.begin(); it != _env.end(); ++it) {
-        std::cout << it->first << ": " << it->second << std::endl;
-    }
+//    for (it = _env.begin(); it != _env.end(); ++it) {
+//        std::cout << it->first << ": " << it->second << std::endl;
+//    }
 
     return (true);
 }

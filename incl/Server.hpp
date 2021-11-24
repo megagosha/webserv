@@ -21,8 +21,8 @@
 #include "Session.hpp"
 #include "MimeType.hpp"
 
-#define MAX_AWAIT_CONN 200
-#define MAX_KQUEUE_EV 5
+#define MAX_AWAIT_CONN 10000
+#define MAX_KQUEUE_EV 300
 
 class Socket;
 

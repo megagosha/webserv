@@ -108,10 +108,13 @@ public:
 
     void prepareResponse();
 
+    std::string getClientIp() const;
+
+    std::string getClientPort() const;
 
     void end(void);
 
-    void processResponse(size_t bytes);
+    void processResponse(size_t bytes, bool eof);
 
     class SessionException : public std::exception {
         const std::string m_msg;

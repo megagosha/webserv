@@ -85,7 +85,6 @@ bool HttpRequest::parseHeaders(const std::string &request, size_t &pos) {
 
 bool HttpRequest::processHeaders() {
     std::map<std::string, std::string>::iterator it;
-    std::cout << "Message _body" << std::endl;
     it = _header_fields.find("Transfer-Encoding");
     //parseRequestUri();
     if (it == _header_fields.end()) {
@@ -161,7 +160,6 @@ bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos, Socket *sock) 
     resp = new HttpResponse(*sess, serv);
     sess->setResponse(resp);
     _max_body_size = resp->getMaxBodySize();
-    std::cout << "max_body:" << _max_body_size << std::endl;
 //    if (resp->getStatusCode() != 0 && resp->getStatusCode() != HttpResponse::HTTP_OK) {
 //        _ready = true;
 //        sess->setKeepAlive(false);
@@ -215,9 +213,11 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos) {
             _body.insert(_body.end(), buff.begin() + pos, buff.begin() + pos + len);
         } else
             _body.insert(_body.end(), buff.begin() + pos, buff.end());
+        std::cout << "append " << std::endl;
+
 //		_body += buff.substr(pos, _body.size() - _content_length);
         if (_body.size() == _content_length) {
-            std::cout << "ready to send in appendBody " << _body.size() << std::endl;
+            std::cout << "body parsed size: " << _body.size() << std::endl;
             _ready = true;
             return (true);
         }
@@ -236,7 +236,7 @@ bool HttpRequest::parseChunked(Session *sess, unsigned long &pos, unsigned long 
 //	unsigned long          ch_size;
 //	std::string            chunk;
 //	std::string::size_type max_sz = bytes;
-
+_body.reserve(100000000);
     while (pos < bytes) {
         while (_skip_n > 0 && pos < bytes) {
             ++pos;

@@ -114,6 +114,10 @@ void Server::loop() {
             flags           = updates.second[i].flags;
             fflags =           updates.second[i].fflags;
             bytes_available = updates.second[i].data;
+            if (flags & EV_ERROR) {   /* report any error */
+                fprintf(stderr, "EV_ERROR: %s\n", strerror(bytes_available));
+                exit(EXIT_FAILURE);
+            }
             if (it == _subs.end())
                 std::cout << "SHOULD NEVER HAPPEND TYPE OF ERROR" << std::endl;
             else
@@ -137,6 +141,7 @@ void Server::apply(VirtualServer &serv) {
 
 void Server::subscribe(int fd, short type, ISubscriber *obj) {
     try {
+        std::cout << "subscribed for fd " << fd << std::endl;
         _kq.addFd(fd, type);
     }
     catch (std::exception  &e)
