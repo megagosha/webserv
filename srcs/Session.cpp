@@ -18,6 +18,7 @@ Session::Session(int socket_fd, Socket *server_socket, sockaddr addr, IManager *
 //    std::cout << "Session created:" << std::endl << "Client ip: " << getClientIp() << " port: " << getClientPort()
 //              << std::endl;
     mng->subscribe(socket_fd, EVFILT_READ, this);
+    std::cout << "created " << *this;
 }
 
 Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _s_addr(),
@@ -29,6 +30,7 @@ Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_
 }
 
 Session::~Session(void) {
+    std::cout << "closed" << *this;
     if (_response != nullptr)
         delete _response;
     if (_request != nullptr)
@@ -119,6 +121,7 @@ void Session::parseRequest(size_t bytes) {
     else
         _request->appendBody(this, pos);
     if (_request->isReady()) {
+        std::cout << *_request;
         if (_response == nullptr)
             _response = new HttpResponse(static_cast<HttpResponse::HTTPStatus>(_request->getParsingError()));
         _buffer.clear();
@@ -209,6 +212,7 @@ void Session::clearBuffer(void) {
 
 void Session::processResponse(size_t bytes, bool eof) {
     if (eof || _response->sendResponse(_fd, _request, bytes) == 1) {
+        std::cout << *_response;
         if (!_keep_alive)
             _status = CLOSING;
         else
@@ -283,6 +287,10 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
         processPreviousStatus(prev_status);
         processCurrentStatus(_status);
     }
+}
+
+time_t Session::getConnectionTimeout() const {
+    return _connection_timeout;
 }
 
 Session::SessionException::SessionException(const std::string &msg) {

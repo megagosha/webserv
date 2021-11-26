@@ -342,6 +342,9 @@ std::map<std::string, std::string> &HttpRequest::getHeaderFields() {
     return _header_fields;
 }
 
+const std::map<std::string, std::string> &HttpRequest::getHeaderFields() const {
+    return _header_fields;
+}
 const std::string &HttpRequest::getBody() const {
     return _body;
 }

@@ -33,7 +33,12 @@ private:
     struct sockaddr  _s_addr;
     bool             _keep_alive;
     short            _status;
-    time_t           _connection_timeout;    //how long to live before initial http request; //@todo add timeout header
+    time_t           _connection_timeout;
+public:
+    time_t getConnectionTimeout() const;
+
+private:
+    //how long to live before initial http request; //@todo add timeout header
     static const int HTTP_DEFAULT_TIMEOUT = 5;
     std::string      _buffer;
     IManager         *_mng;

@@ -1,4 +1,4 @@
-SRC_FILES	= check.cpp \
+SRC_FILES	= main.cpp \
 				HttpRequest.cpp \
 				HttpResponse.cpp \
 				KqueueEvents.cpp \

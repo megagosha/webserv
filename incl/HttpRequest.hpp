@@ -101,6 +101,8 @@ public:
 
     std::map<std::string, std::string> &getHeaderFields();
 
+    const std::map<std::string, std::string> &getHeaderFields() const;
+
     const std::string &getBody() const;
 
     const std::string &getQueryString() const;
