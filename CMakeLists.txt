@@ -19,7 +19,7 @@ add_executable(webserv
         srcs/Location.cpp
         srcs/Utils.cpp
         srcs/MimeType.cpp
-        srcs/check.cpp
+        srcs/main.cpp
         srcs/FileStats.cpp
         srcs/CgiHandler.cpp
 

@@ -17,9 +17,11 @@
 #include "IManager.hpp"
 
 class HttpResponse;
+
 class HttpRequest;
 
 class Socket;
+
 class ISubscriber;
 
 class Session : public ISubscriber {
@@ -36,20 +38,15 @@ private:
     std::string      _buffer;
     IManager         *_mng;
 public:
-    IManager *getMng() const;
-
-public:
-    const std::string &getBuffer() const;
 
     enum Status {
-        AWAIT_NEW_REQ = 1, // if keep alive true close
+        UNUSED         = 0,
+        AWAIT_NEW_REQ  = 1, // if keep alive true close
         CGI_PROCESSING = 2,
-        SENDING       = 3,// response ready -> send
-        TIMEOUT       = 4,//should be closed with timeout;
-        CLOSING       = 5
+        SENDING        = 3,// response ready -> send
+        TIMEOUT        = 4,//should be closed with timeout;
+        CLOSING        = 5
     };
-
-public:
 
     Session();
 
@@ -73,31 +70,18 @@ public:
 
     void setStatus(short status);
 
-    int getFd() const;
-
-    void setFd(int fd);
-
-    Socket *getServerSocket() const;
 
     std::string getIpFromSock();
 
-    void setServerSocket(Socket *serverSocket);
-
-    const HttpResponse *getResponse() const;
 
     void setResponse(HttpResponse *response);
 
     HttpRequest *getRequest() const;
 
-    void setRequest(HttpRequest *request);
 
     bool isKeepAlive() const;
 
     void setKeepAlive(bool keepAlive);
-
-    time_t getConnectionTimeout() const;
-
-    void setConnectionTimeout();
 
     bool writeCgi(size_t bytes, bool eof);
 

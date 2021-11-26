@@ -183,7 +183,7 @@ public:
 
     size_t getBodySize() const;
 
-    bool responsePrepare(HttpRequest *req, IManager *mng);
+    bool responsePrepare(HttpRequest *req, IManager *mng, const std::string& ip);
 
     HTTPStatus executeCgi(HttpRequest *req);
 

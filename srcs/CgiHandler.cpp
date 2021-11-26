@@ -5,12 +5,17 @@
 #include "CgiHandler.hpp"
 
 
+CgiHandler::CgiHandler() {
+
+}
+
+
 CgiHandler::CgiHandler(IManager *mng) :
         _cgi_pid(-1),
         _request_pipe(-1),
         _response_pipe(-1),
         _req(nullptr),
-        _pos(0),
+        _pos(0), _exit_status(0),
         _headers_parsed(false), _mng(mng) {
 }
 
@@ -24,23 +29,24 @@ CgiHandler &CgiHandler::operator=(const CgiHandler &rhs) {
         return (*this);
     _headers_parsed = rhs._headers_parsed;
     _cgi_pid        = rhs._cgi_pid;
-    _pos            = rhs._pos;
+    _request_pipe   = rhs._request_pipe;
+    _response_pipe  = rhs._response_pipe;
     _req            = rhs._req;
+    _pos            = rhs._pos;
+    _exit_status    = rhs._exit_status;
+    _mng            = rhs._mng;
     return (*this);
 }
 
 CgiHandler::~CgiHandler() {
-    _mng->unsubscribe(_cgi_pid, EVFILT_PROC);
-    if (waitpid(_cgi_pid, &_exit_status, WNOHANG) == 0) {
-        std::cout << "CGI GOT KILLED" << std::endl;
+    if (waitpid(_cgi_pid, &_exit_status, WNOHANG) == 0)
         kill(_cgi_pid, SIGKILL);
-    }
     if (_response_pipe != -1)
         close(_response_pipe);
     if (_request_pipe != -1)
         close(_request_pipe);
-    std::cout << "CGI DIED" << std::endl;
-    std::cout << "Exit status was " << WEXITSTATUS(_exit_status) << std::endl;
+//    std::cout << "CGI DIED" << std::endl;
+//    std::cout << "Exit status was " << WEXITSTATUS(_exit_status) << std::endl;
 
 }
 
@@ -69,45 +75,46 @@ void CgiHandler::setHeadersParsed(bool status) {
 }
 
 
-bool CgiHandler::prepareCgiEnv(HttpRequest *request, const std::string &absolute_path, const std::string &serv_port,
+bool CgiHandler::prepareCgiEnv(HttpRequest *request,
+                               const std::string &absolute_path,
+                               const std::string &client_ip,
+                               const std::string &serv_port,
                                const std::string &cgi_exec) {
+
+    std::map<std::string, std::string>::iterator it;
+
     _env["AUTH_TYPE"]      = "";
-//	if (!request.getBody().empty())
-//	{
     _env["CONTENT_LENGTH"] = std::to_string(request->getContentLength());
-    std::map<std::string, std::string>::iterator it = request->getHeaderFields().find("Content-Type");
+
+    it = request->getHeaderFields().find("Content-Type");
     if (it != request->getHeaderFields().end())
         _env["CONTENT_TYPE"] = it->second;
     else
         _env["CONTENT_TYPE"]  = "";
-//	}
-
     _env["GATEWAY_INTERFACE"] = std::string("CGI/1.1");
-//    std::string path_info = absolute_path.substr(absolute_path.find_last_of('/') + 1);
     if (!cgi_exec.empty())
-		_env["SCRIPT_NAME"] = cgi_exec; //cgi_exec;//"/index.php";//request.getRequestUri();
-	else
+        _env["SCRIPT_NAME"]   = cgi_exec;
+    else
         _env["SCRIPT_NAME"] = "";
-        //@todo remove hardcoded path
-	_env["SCRIPT_FILENAME"]   = absolute_path;
-
-    _env["PATH_TRANSLATED"] = request->getRequestUri(); //@todo add additional string manipulation as in rfc
+    _env["SCRIPT_FILENAME"] = absolute_path;
+    _env["PATH_TRANSLATED"] = request->getRequestUri();
     _env["PATH_INFO"]       = request->getRequestUri();
     _env["QUERY_STRING"]    = request->getQueryString();
     _env["REQUEST_URI"]     = request->getRequestUri();
-    _env["REMOTE_ADDR"]     = request->getClientIp(); //@todo FIX
-    _env["REMOTE_HOST"]     = "0.0.0.0";
+    _env["REMOTE_ADDR"]     = client_ip;
+    _env["REMOTE_HOST"]     = client_ip;
     _env["REMOTE_IDENT"]    = "";
     _env["REMOTE_USER"]     = "";
     _env["REQUEST_METHOD"]  = request->getMethod();
     it = request->getHeaderFields().find("Host");
     if (it == request->getHeaderFields().end())
-        _env["SERVER_NAME"] = "0"; //@todo check logic Maybe get server name from VirtualServer config
+        _env["SERVER_NAME"] = "0";
     else
         _env["SERVER_NAME"] = it->second;
     _env["SERVER_PORT"]     = serv_port; // + '\0';
     _env["SERVER_PROTOCOL"] = "HTTP/1.1";
     _env["SERVER_SOFTWARE"] = "topserv_v0.1";
+
     std::map<std::string, std::string>           tmp_map;
     std::map<std::string, std::string>::iterator tmp_map_iter;
     for (it = request->getHeaderFields().begin(); it != request->getHeaderFields().end();) {
@@ -133,19 +140,24 @@ const std::map<std::string, std::string> &CgiHandler::getEnv() const {
 }
 
 char **CgiHandler::getEnv(void) {
-    char **res = new char *[_env.size() + 1];
-    int  i     = 0;
+    try {
+        char **res = new char *[_env.size() + 1];
+        int  i     = 0;
 
-    for (std::map<std::string, std::string>::const_iterator it = _env.begin(); it != _env.end(); ++it) {
-        if (it->second.empty())
-            continue;
-        std::string tmp = it->first + "=" + it->second;
-        res[i] = new char[tmp.size() + 1];
-        strcpy(res[i], tmp.data());
-        ++i;
+        for (std::map<std::string, std::string>::const_iterator it = _env.begin(); it != _env.end(); ++it) {
+            if (it->second.empty())
+                continue;
+            std::string tmp = it->first + "=" + it->second;
+            res[i] = new char[tmp.size() + 1];
+            strcpy(res[i], tmp.data());
+            ++i;
+        }
+        res[i]                                                     = nullptr;
+        return (res);
     }
-    res[i]                                                     = nullptr;
-    return (res);
+    catch (std::exception &e) {
+        return (nullptr);
+    }
 }
 
 const std::string &CgiHandler::getCgiPath() const {

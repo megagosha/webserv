@@ -4,20 +4,52 @@
 #include "Server.hpp"
 
 void signal_handler(int signal) {
-	std::cout << "stopping on signal " << signal << std::endl;
-	exit(signal);
+    std::cout << "stopping on signal " << signal << std::endl;
+    exit(signal);
 }
 
 Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
-    signal(SIGPIPE, SIG_IGN);
-    std::signal(SIGINT, signal_handler);
-    std::signal(SIGQUIT, signal_handler);
-    Utils::tokenizeFileStream(config_file, _tok_list);
-    std::list<std::string>::iterator     end = _tok_list.end();
-    std::list<std::string>::iterator     it  = _tok_list.begin();
-	std::string mime_conf_path;
-	for (; it != end; ++it) // loop for servers
-	{
+    try {
+        registerSignal();
+        parseConfig(config_file);
+    }
+    catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+Server &Server::operator=(const Server &rhs) {
+    if (this == &rhs)
+        return (*this);
+    _sockets  = rhs._sockets;
+    _sessions = rhs._sessions;
+    _tok_list = rhs._tok_list;
+    _kq       = rhs._kq;
+    return (*this);
+}
+
+Server::Server(
+        const Server &rhs) :
+        _sockets(rhs._sockets),
+        _sessions(rhs._sessions),
+        _tok_list(rhs._tok_list),
+        _kq(rhs._kq) {}
+
+
+Server::~Server() {
+    for (std::map<int, Socket *>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
+        it->second->clear();
+    }
+}
+
+void Server::parseConfig(const std::string &config) {
+    Utils::tokenizeFileStream(config, _tok_list);
+    std::list<std::string>::iterator end = _tok_list.end();
+    std::list<std::string>::iterator it  = _tok_list.begin();
+    std::string                      mime_conf_path;
+    for (; it != end; ++it) // loop for servers
+    {
         if (*it != "server" || *(++it) != "{")
             throw Server::ServerException("Error while parsing config file");
         VirtualServer serv;
@@ -49,49 +81,18 @@ Server::Server(const std::string &config_file) : _kq(MAX_KQUEUE_EV) {
                 serv.setLocation(it, end);
                 continue;
             }
-			if (it != end && *it == "mime_conf_path")
-			{
-				Utils::skipTokens(it, end, 1);
-				mime_conf_path = *it;
-			}
-			++it;
+            if (it != end && *it == "mime_conf_path") {
+                Utils::skipTokens(it, end, 1);
+                mime_conf_path = *it;
+            }
+            ++it;
             //@todo THROW ERROR if nothing else worked
         }
-		if(mime_conf_path.empty())
-			throw Server::ServerException("No mime.conf path");
-		MimeType(mime_conf_path.c_str());
-		validate(serv);
+        if (mime_conf_path.empty())
+            throw Server::ServerException("No mime.conf path");
+        MimeType(mime_conf_path.c_str());
+        validate(serv);
         apply(serv);
-    }
-    for (std::map<int, Socket*>::iterator ity = _sockets.begin(); ity != _sockets.end(); ++ity) {
-        std::cout << "Socket created on fd " << ity->first << " internal " << ity->second->getSocketFd() << std::endl;
-    }
-    Server::loop();
-}
-
-
-Server &Server::operator=(const Server &rhs) {
-    if (this == &rhs)
-        return (*this);
-    _sockets  = rhs._sockets;
-    _sessions = rhs._sessions;
-    _tok_list = rhs._tok_list;
-    _kq       = rhs._kq;
-    return (*this);
-}
-
-Server::Server(
-        const Server &rhs) :
-        _sockets(rhs._sockets),
-        _sessions(rhs._sessions),
-        _tok_list(rhs._tok_list),
-        _kq(rhs._kq) {}
-
-
-//@todo create destructor
-Server::~Server() {
-    for (std::map<int, Socket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
-        it->second->clear();
     }
 }
 
@@ -103,7 +104,7 @@ void Server::loop() {
     int                                    cur_fd;
     int16_t                                filter;
     uint16_t                               flags;
-    uint32_t                                fflags;
+    uint32_t                               fflags;
     while (true) {
         updates = _kq.getUpdates();
         i       = 0;
@@ -112,15 +113,12 @@ void Server::loop() {
             filter          = updates.second[i].filter;
             cur_fd          = updates.second[i].ident;
             flags           = updates.second[i].flags;
-            fflags =           updates.second[i].fflags;
+            fflags          = updates.second[i].fflags;
             bytes_available = updates.second[i].data;
             if (flags & EV_ERROR) {   /* report any error */
                 fprintf(stderr, "EV_ERROR: %s\n", strerror(bytes_available));
-                exit(EXIT_FAILURE);
             }
-            if (it == _subs.end())
-                std::cout << "SHOULD NEVER HAPPEND TYPE OF ERROR" << std::endl;
-            else
+            if (it != _subs.end())
                 it->second->processEvent(cur_fd, bytes_available, filter, fflags, (flags & EV_EOF), this);
             ++i;
         }
@@ -129,53 +127,50 @@ void Server::loop() {
 }
 
 void Server::apply(VirtualServer &serv) {
-    for (std::map<int, Socket*>::iterator it = _sockets.begin(); it != _sockets.end(); ++it) {
+    for (std::map<int, Socket *>::iterator it    = _sockets.begin(); it != _sockets.end(); ++it) {
         if (serv.getHost() == it->second->getIp() && serv.getPort() == it->second->getPort()) {
             it->second->appendVirtualServer(serv);
             return;
         }
     }
-    Socket *sock = new  Socket(serv.getHost(), serv.getPort(), serv, this);
-    _sockets.insert(std::map<int, Socket*>::value_type(sock->getSocketFd(), sock));
+    Socket                                 *sock = new Socket(serv.getHost(), serv.getPort(), serv, this);
+    _sockets.insert(std::map<int, Socket *>::value_type(sock->getSocketFd(), sock));
 }
 
 void Server::subscribe(int fd, short type, ISubscriber *obj) {
     try {
-        std::cout << "subscribed for fd " << fd << std::endl;
         _kq.addFd(fd, type);
     }
-    catch (std::exception  &e)
-    {
-        std::cout << e.what() << std::endl;
+    catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
     }
     _subs.insert(std::map<int, ISubscriber *>::value_type(fd, obj));
 }
 
 void Server::unsubscribe(int fd, int16_t type) {
     _kq.deleteFd(fd, type);
-//    if (type == EVFILT_WRITE && _sessions.find(fd) == _sessions.end())
     _subs.erase(fd);
-//    _pending_sessions.erase(fd);
 }
 
-void Server::removeSession(int fd)
-{
+void Server::removeSession(int fd) {
     _sessions.erase(fd);
     _subs.erase(fd);
 }
 
 void Server::removeExpiredSessions() {
-    std::vector<int> to_delete;
+    if (_sessions.empty())
+        return;
+    std::vector<Session *> to_delete;
     to_delete.reserve(_sessions.size());
     for (std::map<int, Session *>::iterator sess_it = _sessions.begin(); sess_it != _sessions.end(); ++sess_it) {
         if (sess_it->second->getStatus() == Session::AWAIT_NEW_REQ &&
-        sess_it->second->shouldClose()) {
-            sess_it->second->end();
-            to_delete.push_back(sess_it->first);
+            sess_it->second->shouldClose()) {
+            to_delete.push_back(sess_it->second);
         }
     }
-    for (std::vector<int>::iterator         vec_it  = to_delete.begin(); vec_it != to_delete.end(); ++vec_it)
-        _sessions.erase(*vec_it);
+    for (std::vector<Session *>::iterator   vec_it  = to_delete.begin(); vec_it != to_delete.end(); ++vec_it) {
+        (*vec_it)->end();
+    }
 }
 
 
@@ -195,12 +190,17 @@ void Server::addSession(std::pair<int, Session *> pair) {
     _sessions.insert(pair);
 }
 
+void Server::registerSignal() {
+    signal(SIGPIPE, SIG_IGN);
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGQUIT, signal_handler);
+}
 
 Server::ServerException::ServerException(const std::string &msg) : m_msg(msg) {}
 
 Server::ServerException::~ServerException() throw() {}
 
 const char *Server::ServerException::what() const throw() {
-    std::cerr << "ServerError: ";
+    std::cerr << "ServerError: " << m_msg << std::endl;
     return (std::exception::what());
 }

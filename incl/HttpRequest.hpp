@@ -2,11 +2,6 @@
 // Created by Elayne Debi on 9/9/21.
 //
 
-//3 types of bodies
-// fixedlength
-// _chunked transfer
-// no length provided
-
 #ifndef HTTP_REQUEST_HPP
 #define HTTP_REQUEST_HPP
 
@@ -20,9 +15,6 @@
 #include "Socket.hpp"
 #include "Location.hpp"
 #include "Session.hpp"
-
-
-std::string &leftTrim(std::string &str, std::string chars);
 
 class Socket;
 
@@ -41,11 +33,10 @@ private:
     bool                               _chunked;
     std::map<std::string, std::string> _header_fields;
     std::string                        _body;
-    std::string                        _client_ip;
     unsigned long                      _content_length;
     bool                               _ready;
     unsigned long                      _max_body_size;
-    uint16_t         _parsing_error;
+    uint16_t                           _parsing_error;
     std::string                        _chunk_length;
     unsigned long                      _c_bytes_left;
     short                              _skip_n;
@@ -60,7 +51,7 @@ public:
         MAX_NAME              = 100,
         MAX_VALUE             = 1000,
         MAX_MESSAGE           = 10000,
-        MAX_DEFAULT_BODY_SIZE = 10000000
+        MAX_DEFAULT_BODY_SIZE = 1000000
     };
 
     void setNormalizedPath(const std::string &normalizedPath);
@@ -71,17 +62,10 @@ public:
 
     unsigned long getContentLength() const;
 
-    void sendContinue(int fd);
 
     bool isReady() const;
 
-    void setReady(bool ready);
-
     uint16_t getParsingError() const;
-
-    void setParsingError(uint16_t parsingError);
-
-    const std::string &getClientIp() const;
 
     HttpRequest();
 
@@ -89,20 +73,29 @@ public:
 
     HttpRequest &operator=(const HttpRequest &rhs);
 
-    //reserve field memory
-    HttpRequest(const std::string client_ip);
+    bool parseRequestLine(const std::string &req, size_t &pos);
+
+    bool parseHeaders(const std::string &req, size_t &pos);
+
+    bool parseRequestMessage(Session *sess, size_t &pos, Socket *serv);
+
+    bool processHeaders();
 
     bool parseChunked(Session *sess, unsigned long &pos, unsigned long bytes);
 
     bool appendBody(Session *sess, size_t &pos);
 
+    bool findRouteSetResponse(Session *sess, Socket *sock);
+
     const std::string &getMethod() const;
 
     const std::string &getRequestUri() const;
 
-    bool setErrorResponse(uint16_t Status);
+    bool setParsingError(uint16_t status);
 
     const std::string &getHttpV() const;
+
+    bool headersSent(const std::string &req);
 
     bool isChunked() const;
 
@@ -114,14 +107,9 @@ public:
 
     const std::string &getNormalizedPath() const;
 
-    bool parseRequestLine(const std::string &req, size_t &pos);
+    //    void sendContinue(int fd);
 
-    bool parseHeaders(const std::string &req, size_t &pos);
-
-    bool parseRequestMessage(Session *sess, size_t &pos, Socket *serv);
-
-    bool processHeaders();
 //	bool parseBody(std::string &request, size_t &pos, Socket *socket);
 };
 
-#endif //UNTITLED_HTTPREQUEST_HPP
+#endif //HTTP_REQUEST_HPP

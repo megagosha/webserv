@@ -21,10 +21,21 @@
 #include "HttpRequest.hpp"
 #include "ISubscriber.hpp"
 #include "IManager.hpp"
-class CgiHandler  {
-public:
 
+class CgiHandler {
+private:
+    pid_t                              _cgi_pid;
+    int                                _request_pipe;
+    int                                _response_pipe;
+    HttpRequest                        *_req;
+    size_t                             _pos;
+    std::map<std::string, std::string> _env;
+    std::string                        _cgi_path;
+    int                                _exit_status;
+    bool                               _headers_parsed;
+    IManager                           *_mng;
     CgiHandler();
+public:
 
     CgiHandler(CgiHandler const &rhs);
 
@@ -33,7 +44,9 @@ public:
     virtual ~CgiHandler();
 
 
-    bool prepareCgiEnv(HttpRequest *request, const std::string &absolute_path, const std::string &serv_port,
+    bool prepareCgiEnv(HttpRequest *request, const std::string &absolute_path,
+                       const std::string &client_ip,
+                       const std::string &serv_port,
                        const std::string &cgi_exec);
 
     pid_t getCgiPid() const;
@@ -79,17 +92,6 @@ public:
 
     int &getExitStatus();
 
-private:
-    pid_t                              _cgi_pid;
-    int                                _request_pipe;
-    int                                _response_pipe;
-    HttpRequest                        *_req;
-    size_t                             _pos;
-    std::map<std::string, std::string> _env;
-    std::string                        _cgi_path;
-    int                                _exit_status;
-    bool                               _headers_parsed;
-    IManager                           *_mng;
 };
 
 

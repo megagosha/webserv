@@ -9,18 +9,18 @@ Socket::Socket() {
 }
 
 Socket::Socket(in_addr_t ip, uint16_t port, const VirtualServer &serv, Server *manager) :
-
         _ip(ip), _port(port), _serv(manager) {
     appendVirtualServer(serv);
     sockaddr_in addr = {};
     int         fd;
 
-    fd         = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	int opt = 1;
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)) < 0)
-		throw SocketException(std::strerror(errno));
-	_socket_fd = fd;
-    std::cout << "socket created " << fd << std::endl;
+    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd == -1)
+        throw SocketException(std::strerror(errno));
+    int opt = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)) < 0)
+        throw SocketException(std::strerror(errno));
+    _socket_fd = fd;
     if (fd < 0)
         throw SocketException(std::strerror(errno));
     fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -55,7 +55,7 @@ Socket::Socket(const Socket &rhs) : _socket_fd(rhs._socket_fd),
 }
 
 Socket::~Socket() {
-    for (std::map<int, Session*>::iterator it = _sessions.begin(); it != _sessions.end(); ++it) {
+    for (std::map<int, Session *>::iterator it = _sessions.begin(); it != _sessions.end(); ++it) {
         it->second->end();
         delete it->second;
     }
@@ -79,30 +79,17 @@ Socket &Socket::operator=(const Socket &rhs) {
     return (*this);
 }
 
-//Socket::Socket(in_addr_t ip,
-//			   uint16_t port,
-//			   int fd,
-//			   VirtualServer &serv) :
-//		_socket_fd(fd),
-//		_ip(ip),
-//		_port(port), _default_config(nullptr)
-//{
-//	appendVirtualServer(serv);
-//};
-
 // get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
+void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET)
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+        return &(((struct sockaddr_in *) sa)->sin_addr);
+    return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
 std::pair<int, Session *> Socket::acceptConnection() {
-    int                                               new_fd;
-    struct sockaddr                                   s_addr = {};
-    socklen_t                                         s_len;
-//    std::pair<std::map<int, Session *>::iterator, bool> res;
+    int             new_fd;
+    struct sockaddr s_addr = {};
+    socklen_t       s_len;
 
     new_fd = accept(_socket_fd, &s_addr,
                     &s_len); //@todo To ensure that accept() never blocks, the passed socket sockfd needs to have the O_NONBLOCK
@@ -178,12 +165,17 @@ const std::map<std::string, VirtualServer> &Socket::getVirtualServers() const {
     return _virtual_servers;
 }
 
-void Socket::processEvent(int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags, __unused bool eof, Server *serv) {
+void Socket::processEvent(__unused int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags,
+                          __unused bool eof, Server *serv) {
     std::pair<int, Session *> res;
-
-    if (fd == _socket_fd) {
+    if (_sessions.size() > 2) //@todo 21school tester workaround (should be removed)
+        return;
+    try {
         res = acceptConnection();
         serv->addSession(res);
+    }
+    catch (std::exception &e) {
+        std::cerr << "Accept connection failed" << std::endl;
     }
 }
 

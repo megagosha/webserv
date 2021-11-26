@@ -19,7 +19,7 @@ bool Utils::fileExistsAndReadable(const std::string &name)
 	{
 		return false;
 	}
-};
+}
 
 bool Utils::fileExistsAndWritable(const std::string &name)
 {
@@ -32,15 +32,12 @@ bool Utils::fileExistsAndWritable(const std::string &name)
 	{
 		return false;
 	}
-};
+}
 
 void Utils::recv(long bytes, int socket, std::string &res)
 {
 	if (read(socket, &res[0], bytes) < 0)
-	{ //@todo gracefull close
-		std::cout << std::strerror(errno);
-		throw GeneralException("Error while reading socket");
-	}
+		throw GeneralException(std::strerror(errno));
 }
 
 bool Utils::fileExistsAndExecutable(const char *file)
@@ -125,13 +122,13 @@ std::string Utils::normalizeUri(std::string s)
 		s.append(*rit);
 	}
 	return (s);
-};
+}
 
 Utils::GeneralException::GeneralException(const std::string &msg) : m_msg(msg)
-{};
+{}
 
 Utils::GeneralException::~GeneralException() throw()
-{};
+{}
 
 const char *Utils::GeneralException::what() const throw()
 {

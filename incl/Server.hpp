@@ -22,7 +22,7 @@
 #include "MimeType.hpp"
 
 #define MAX_AWAIT_CONN 10000
-#define MAX_KQUEUE_EV 300
+#define MAX_KQUEUE_EV 1000
 
 class Socket;
 
@@ -36,7 +36,6 @@ private:
     std::map<int, ISubscriber *> _subs;
     std::list<std::string>       _tok_list;
     KqueueEvents                 _kq;
-
     Server();
 
 public:
@@ -50,6 +49,10 @@ public:
 
     Server(const std::string &config_file);
 
+    void registerSignal();
+
+    void parseConfig(const std::string &config);
+
     void addSession(std::pair<int, Session *> pair);
 
     virtual void subscribe(int fd, short type, ISubscriber *obj);
@@ -58,7 +61,7 @@ public:
 
     virtual void loop();
 
-    bool validate(const VirtualServer &server);
+    static bool validate(const VirtualServer &server);
 
     void apply(VirtualServer &serv);
 

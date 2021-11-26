@@ -45,11 +45,6 @@ std::string Location::getAllowedMethodsField() const
 	return (res);
 }
 
-//	bool VirtualServer::Location::isAutoindexOn() const
-//	{
-//		return _autoindex_on;
-//	}
-
 bool Location::isFileUploadOn() const
 {
 	return (_file_upload);
@@ -140,15 +135,6 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 						   std::list<std::string>::iterator &end, std::string path)
 {
 	Utils::skipTokens(it, end, 2);
-
-//	if (path[0] == '*' && *it == "cgi_pass")
-//	{
-//		Utils::skipTokens(it, end, 1);
-//        _cgi_pass = *it;
-//        //                location.insert(std::make_pair(path, loc));
-//		Utils::skipTokens(it, end, 2);
-//		return;
-//	}
 	_path = path;
 	std::list<std::string>::iterator check;
 	while (it != end && *it != "}")
@@ -164,7 +150,6 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 			Utils::skipTokens(it, end, 1);
 			_cgi_pass = *it;
 			//                location.insert(std::make_pair(path, loc));
-			std::cout << "cgi parsed" << *it << std::endl;
 			Utils::skipTokens(it, end, 2);
 		}
 		if (*it == "methods")
@@ -222,7 +207,6 @@ void Location::setLocation(std::list<std::string>::iterator &it,
 		if (*it == "client_max_body_size")
 		{
 			Utils::skipTokens(it, end, 1);
-            std::cout << _path << " *it: " << *it << " stoul: " << std::stoul(*it) << std::endl;
 			_max_body = std::stoul(*it); // value given in mb
 			Utils::skipTokens(it, end, 2);
 		}

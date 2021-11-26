@@ -20,7 +20,6 @@ uint16_t VirtualServer::getPort() const
 
 bool VirtualServer::validatePort() const
 {
-	std::cout << _port << std::endl;
 	if (_port < 1 || _port > 65535)
 		return (false);
 	return (true);
@@ -208,13 +207,6 @@ std::map<std::string, Location>::const_iterator VirtualServer::checkCgi(std::str
 	return (_locations.end());
 }
 
-
-/*
- *  if loc is not included in path -> no match
- * full_match path == loc return immediately
- * other count size; choose result in the end
- */
-
 std::map<std::string, Location>::const_iterator VirtualServer::findRouteFromUri(const std::string &normalized_uri) const
 {
 	std::map<std::string, Location>::const_iterator it;
@@ -295,18 +287,6 @@ std::string getFullPath(const std::string &loc_path, const std::string &root, co
 	return (res);
 }
 
-/*
- * 1. Find location for uri
-2. Check if redirect enabled
-	return redirect instance;
-3. If CGI execute cgi
-4. If request method is put return
-5. if not found, search for index file;
-5. If found return;
-
- 1. Check if file is folder;
- 2. If file is folder search for index
- */
 const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 {
 	location_it it;
@@ -319,7 +299,7 @@ const Location *VirtualServer::getLocationFromRequest(HttpRequest &req) const
 	if (path.empty())
 		return (nullptr);
 
-	it = findRouteFromUri(path); //@todo add search for cgi_location
+	it = findRouteFromUri(path);
 	if (it == _locations.end())
 		return (nullptr);
 	Utils::removeLocFromUri(it->first, path);
@@ -359,12 +339,12 @@ std::string VirtualServer::unhashMethod(VirtualServer::method_type type)
 			return ("POST");
 		case DELETE:
 			return ("DELETE");
+        case PUT:
+            return ("PUT");
 		default:
 			return ("OTHER");
 	}
 }
-
-//process request
 
 VirtualServer::VirtualServerException::VirtualServerException(const std::string &msg) : m_msg(msg)
 {}
