@@ -270,7 +270,7 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
     if (_fd == fd && eof &&
         (filter == EVFILT_WRITE ||
          (filter == EVFILT_READ && (_request == nullptr || !_request->isReady()))))
-        end();
+        return end();
     else if ((_status == AWAIT_NEW_REQ || _status == UNUSED) && filter == EVFILT_READ && fd == _fd &&
              bytes_available > 0) {
         parseRequest(bytes_available);

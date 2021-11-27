@@ -153,8 +153,8 @@ void Server::unsubscribe(int fd, int16_t type) {
 }
 
 void Server::removeSession(int fd) {
-    _sessions.erase(fd);
     _subs.erase(fd);
+    _sessions.erase(fd);
 }
 
 void Server::removeExpiredSessions() {

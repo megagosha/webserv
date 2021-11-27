@@ -15,7 +15,7 @@ SRC_FILES	= main.cpp \
 NAME	= webserv
 
 #CC		= clang++ -fsanitize=address
-CC		= clang++ -O3
+CC		= clang++ -g -fsanitize=address
 RM		= rm -f
 
 CFLAGS	= -Wall -Wextra -Werror -std=c++98 -pedantic

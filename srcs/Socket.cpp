@@ -103,6 +103,10 @@ std::pair<int, Session *> Socket::acceptConnection() {
 
 
 void Socket::removeSession(int fd) {
+    std::map<int, Session*>::iterator it;
+    it = _sessions.find(fd);
+    if (it != _sessions.end())
+        delete it->second;
     _sessions.erase(fd);
     _serv->removeSession(fd);
 }
