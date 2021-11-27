@@ -11,6 +11,7 @@
 #include "KqueueEvents.hpp"
 #include <map>
 #include <iostream>
+#include <cstdio>
 #include<fstream>
 #include "CgiHandler.hpp"
 #include <fstream>

@@ -3,6 +3,14 @@
 //
 #include "Server.hpp"
 
+/*
+ * @todo
+ * The select or euqivalent should be in the main loop and should check fd for read and write at the same time
+ * If read or write return error client should be disconnected
+ * You should check both -1 and 0
+ * For TCP sockets, the return value 0 means the peer has closed its half side of the connection.
+ *
+ */
 void signal_handler(int signal) {
     std::cout << "stopping on signal " << signal << std::endl;
     exit(signal);

@@ -71,7 +71,7 @@ public:
     static bool isDirectory(const std::string &path);
 
     static bool fileExistsAndWritable(const std::string &name);
-
+    static bool folderExistsAndWritable(const std::string &name);
     static bool isNotEmptyDirectory(const std::string &path);
 
     static bool checkIfPathExists(const std::string &path);

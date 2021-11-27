@@ -199,7 +199,7 @@ bool HttpRequest::parseRequestMessage(Session *sess, size_t &pos, Socket *sock) 
         if (!(parseHeaders(req, pos))) break;
         processUri();
         if (!(processHeaders())) break;
-        if (!findRouteSetResponse(sess, sock)) break;
+         if (!findRouteSetResponse(sess, sock)) break;
         if (_content_length > _max_body_size) {
             _parsing_error = HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE;
             break;
@@ -237,9 +237,14 @@ bool HttpRequest::appendBody(Session *sess, size_t &pos) {
             return (false);
     } else {
         size_t len;
-        if (_parsing_error == HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE && _content_length > 0)
-            _content_length -= buff.size();
-        else if (buff.size() - pos + _body.size() > _content_length) {
+        if (_parsing_error == HttpResponse::HTTP_REQUEST_ENTITY_TOO_LARGE && _content_length > 0) {
+            if (buff.size() - pos > _content_length)
+                _content_length = 0;
+            else
+                _content_length -= buff.size() - pos;
+//            _content_length -= pos - buff.size();
+        }
+        else if (buff.size() + _body.size() - pos > _content_length) {
             len = _content_length - _body.size();
             _body.insert(_body.end(), buff.begin() + pos, buff.begin() + pos + len);
         } else

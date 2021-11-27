@@ -28,6 +28,16 @@ bool Utils::fileExistsAndWritable(const std::string &name) {
     }
 }
 
+bool Utils::folderExistsAndWritable(const std::string &name) {
+    struct stat st = {};
+
+    if (stat(name.data(), &st) < 0)
+        return false;
+    if (S_ISDIR(st.st_mode) && (st.st_mode & S_IWUSR))
+        return true;
+    return false;
+}
+
 void Utils::recv(long bytes, int socket, std::string &res) {
     if (read(socket, &res[0], bytes) < 0)
         throw GeneralException(std::strerror(errno));

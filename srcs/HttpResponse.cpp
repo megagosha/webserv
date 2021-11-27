@@ -5,6 +5,7 @@
 #include "HttpResponse.hpp"
 
 HttpResponse::HttpResponse() {
+    _config = nullptr;
     _cgi = nullptr;
     _pos = 0;
 }
@@ -17,6 +18,7 @@ HttpResponse::~HttpResponse() {
 
 //error response constructor
 HttpResponse::HttpResponse(HTTPStatus code, const VirtualServer *server) {
+    _config = nullptr;
     _cgi = nullptr;
     _pos = 0;
     setError(code, server);
@@ -113,12 +115,15 @@ HttpResponse::HttpResponse(const HttpResponse &rhs) :
         _status_code(rhs._status_code),
         _status_reason(rhs._status_reason),
         _response_string(rhs._response_string),
+        _absolute_path(rhs._absolute_path),
         _response_headers(rhs._response_headers),
         _body(rhs._body),
         _body_size(rhs._body_size),
         _cgi(rhs._cgi),
         _headers_vec(rhs._headers_vec),
-        _pos(rhs._pos)
+        _pos(rhs._pos),
+        _config(rhs._config),
+        _loc(rhs._loc)
 //        _cgi_env(rhs._cgi_env),
 //_cgi_path(rhs._cgi_path)
 {}
@@ -136,6 +141,8 @@ HttpResponse &HttpResponse::operator=(const HttpResponse &rhs) {
     _cgi              = rhs._cgi;
     _headers_vec      = rhs._headers_vec;
     _pos              = rhs._pos;
+    _config = rhs._config;
+    _loc = rhs._loc;
 //    _cgi_path = rhs._cgi_path;
     return (*this);
 }
@@ -177,6 +184,11 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
         setError(HTTP_NOT_FOUND, serv);
         return;
     }
+    if (Utils::folderExistsAndWritable(req->getNormalizedPath()))
+    {
+        setError(HTTP_CONFLICT, serv);
+        return;
+    }
     if (Utils::fileExistsAndWritable(req->getNormalizedPath()))
         setResponseString("HTTP/1.1", HTTP_NO_CONTENT);
     else
@@ -191,7 +203,7 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
     if (rf) {
         rf.write(req->getBody().data(), req->getBody().size());
         rf.close();
-        insertHeader("Content-Location", loc->getPath() + "/" + file_name);
+        insertHeader("Content-Location", req->getRequestUri());
         return;
     } else {
         setError(HTTP_INTERNAL_SERVER_ERROR, serv);
@@ -216,7 +228,7 @@ void HttpResponse::processDeleteRequest(const VirtualServer *conf,
         setError(HTTP_CONFLICT, conf);
         return;
     }
-    if (!Utils::fileExistsAndWritable(req->getNormalizedPath())) {
+    if (!Utils::fileExistsAndWritable(req->getNormalizedPath()) && !Utils::folderExistsAndWritable(req->getNormalizedPath())) {
         if (errno == EACCES)
             setError(HTTP_FORBIDDEN, conf);
         else
@@ -306,7 +318,7 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server) {
             return;
     }
     res = getErrorHtml(error_code, reason_phrase);
-    _body.insert(_body.end(), res.begin(), res.end());
+    _body.assign(res.begin(), res.end());
     _body_size = _body.size();
 }
 
@@ -407,7 +419,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         else
             to_send = _headers_vec.size() - pos;
         res         = send(fd, _headers_vec.data() + pos, to_send, 0);
-        if (res < 0)
+        if (res <= 0)
             return (-1);
         _pos += res;
         bytes -= res;
@@ -423,7 +435,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         else
             to_send = _body.size() - pos;
         res         = send(fd, _body.data() + pos, to_send, 0);
-        if (res < 0)
+        if (res <= 0)
             return (-1);
         _pos += res;
     }
@@ -603,6 +615,7 @@ size_t HttpResponse::getMaxBodySize() {
 }
 
 HttpResponse::HttpResponse(HttpResponse::HTTPStatus status) {
+    _config = nullptr;
     _cgi = nullptr;
     _pos = 0;
     setError(status, nullptr);

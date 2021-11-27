@@ -9,13 +9,13 @@
 server {
     listen 127.0.0.1;
     port 8080;
-    error_page 404 /Users/sergeykozlov/wsrv14/www/error/404.html;
-    error_page 405 /Users/sergeykozlov/wsrv14/www/error/405.html;
-    client_max_body_size 1048576;
-  mime_conf_path /Users/sergeykozlov/wsrv14/mime.conf
+    error_page 404 /Users/edebi/Desktop/webserv/www/error/404.html;
+    error_page 405 /Users/edebi/Desktop/webserv/www/error/405.html;
+    client_max_body_size 1024;
+  mime_conf_path /Users/edebi/Desktop/webserv/mime.conf
 
  location / {
-    root /Users/sergeykozlov/wsrv14/www/final/;
+    root /Users/edebi/Desktop/webserv/www/final/;
     methods POST GET;
     autoindex on; #turned on by default;
     #index index.html; #specify default file
@@ -23,70 +23,118 @@ server {
 
  location /images/hero.jpg
  {
-    root /Users/sergeykozlov/wsrv14/www/final/;
+    root /Users/edebi/Desktop/webserv/www/final/;
     return /images/profile.jpg;
  }
  location /upload
  {
-     root /Users/sergeykozlov/wsrv14/www/final/;
+     root /Users/edebi/Desktop/webserv/www/final/;
      file_upload on;
      methods POST GET DELETE PUT;
  }
 
 location /images
  {
-    root /Users/sergeykozlov/wsrv14/www/final/images/;
+    root /Users/edebi/Desktop/webserv/www/final/images/;
     autoindex on;
     methods POST GET DELETE;
  }
  location *.php {
-    root /Users/sergeykozlov/wsrv14/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-    cgi_pass /usr/local/bin/php-cgi; #IS NOT VALID CGI specify full path
+    root /Users/edebi/Desktop/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+    cgi_pass /Users/edebi/Downloads/cgi_tester; #IS NOT VALID CGI specify full path
  }
   location *.bla {
-     root /Users/sergeykozlov/wsrv14/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-     cgi_pass /Users/sergeykozlov/wsrv14/cgi_tester; #IS NOT VALID CGI specify full path
+     root /Users/edebi/Desktop/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
+     cgi_pass /Users/edebi/Downloads/cgi_tester; #IS NOT VALID CGI specify full path
       client_max_body_size 300000000;
   }
 }
+
+server {
+    listen 127.0.0.1;
+    port 8081;
+    error_page 404 /Users/edebi/Desktop/webserv/www/test1/404.html;
+    client_max_body_size 1024;
+  mime_conf_path /Users/edebi/Desktop/webserv/mime.conf
+
+ location / {
+    root /Users/edebi/Desktop/webserv/www/test1/;
+    methods POST GET;
+    #autoindex on; #turned on by default;
+    index index.html; #specify default file
+ }
+
+ }
+
+server {
+    listen 127.0.0.1;
+    port 8081;
+    server_name test2;
+    client_max_body_size 1024;
+    mime_conf_path /Users/edebi/Desktop/webserv/mime.conf;
+
+ location / {
+    root /Users/edebi/Desktop/webserv/www/test2/;
+    methods POST GET DELETE PUT;
+        file_upload on;
+    #index index.html; #specify default file
+    client_max_body_size 100000000;
+    autoindex off;
+ }
+ }
+ server {
+     listen 127.0.0.1;
+     port 8081;
+     server_name test3
+     client_max_body_size 1024;
+   mime_conf_path /Users/edebi/Desktop/webserv/mime.conf
+
+  location / {
+     root /Users/edebi/Desktop/webserv/www/test3/;
+     methods POST GET;
+     #autoindex on; #turned on by default;
+     #index index.html; #specify default file
+  }
+  }
+
 server {
     listen 127.0.0.1;
     port 8080;
     server_name localhost;
     client_max_body_size 1024;
  location / {
-    root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/;
+    root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/;
     methods GET;
     autoindex on;
  }
  location /put_test
  {
-    root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/upload/;
+    root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/upload/;
     client_max_body_size 10000000;
     file_upload on;
     methods GET PUT;
  }
   location *.bla {
-     root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
-     cgi_pass /Users/sergeykozlov/wsrv14/cgi_tester;
+     root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
+     cgi_pass /Users/edebi/Downloads/cgi_tester;
      client_max_body_size 300000000;
      methods POST GET;
   }
   location /post_body
   {
-      root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/;
+      root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/;
       client_max_body_size 100;
-      root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/;
+      root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/;
       methods POST;
   }
   location /directory
   {
-    root /Users/sergeykozlov/wsrv14/www/42_tester/YoupiBanane/;
+    root /Users/edebi/Desktop/webserv/www/42_tester/YoupiBanane/;
     methods GET POST;
     index youpi.bad_extension;
     autoindex off;
   }
-    mime_conf_path /Users/sergeykozlov/wsrv14/mime.conf
+    mime_conf_path /Users/edebi/Desktop/webserv/mime.conf
  }
 
 # server {
