@@ -3,14 +3,6 @@
 //
 #include "Server.hpp"
 
-/*
- * @todo
- * The select or euqivalent should be in the main loop and should check fd for read and write at the same time
- * If read or write return error client should be disconnected
- * You should check both -1 and 0
- * For TCP sockets, the return value 0 means the peer has closed its half side of the connection.
- *
- */
 void signal_handler(int signal) {
     std::cout << "stopping on signal " << signal << std::endl;
     exit(signal);
@@ -94,7 +86,6 @@ void Server::parseConfig(const std::string &config) {
                 mime_conf_path = *it;
             }
             ++it;
-            //@todo THROW ERROR if nothing else worked
         }
         if (mime_conf_path.empty())
             throw Server::ServerException("No mime.conf path");
@@ -126,8 +117,9 @@ void Server::loop() {
             if (flags & EV_ERROR) {   /* report any error */
                 fprintf(stderr, "EV_ERROR: %s\n", strerror(bytes_available));
             }
-            if (it != _subs.end())
+            if (it != _subs.end()) {
                 it->second->processEvent(cur_fd, bytes_available, filter, fflags, (flags & EV_EOF), this);
+            }
             ++i;
         }
         removeExpiredSessions();
@@ -155,13 +147,13 @@ void Server::subscribe(int fd, short type, ISubscriber *obj) {
     _subs.insert(std::map<int, ISubscriber *>::value_type(fd, obj));
 }
 
-void Server::unsubscribe(int fd, int16_t type) {
-    _kq.deleteFd(fd, type);
+void Server::unsubscribe(int fd, __unused int16_t type) {
+//    _kq.deleteFd(fd, type);
     _subs.erase(fd);
 }
 
-void Server::removeSession(int fd) {
-    _subs.erase(fd);
+void Server::serverRemoveSession(int fd) {
+//    _subs.erase(fd);
     _sessions.erase(fd);
 }
 
@@ -170,15 +162,18 @@ void Server::removeExpiredSessions() {
         return;
     std::vector<Session *> to_delete;
     to_delete.reserve(_sessions.size());
-    for (std::map<int, Session *>::iterator sess_it = _sessions.begin(); sess_it != _sessions.end(); ++sess_it) {
-        if (sess_it->second->getStatus() == Session::AWAIT_NEW_REQ &&
-            sess_it->second->shouldClose()) {
-            to_delete.push_back(sess_it->second);
+
+
+    for (std::map<int, Session *>::iterator sess_it = _sessions.begin(); sess_it != _sessions.end();) {
+        std::map<int, Session *>::iterator tmp = sess_it++;
+        if (tmp->second->shouldClose()) {
+            tmp->second->end();
         }
     }
-    for (std::vector<Session *>::iterator   vec_it  = to_delete.begin(); vec_it != to_delete.end(); ++vec_it) {
-        (*vec_it)->end();
-    }
+//    for (std::vector<Session *>::iterator   vec_it  = to_delete.begin(); vec_it != to_delete.end(); ++vec_it) {
+//        _subs.erase((*vec_it)->getFd());
+//        (*vec_it)->end();
+//    }
 }
 
 
@@ -196,6 +191,7 @@ bool Server::validate(const VirtualServer &server) {
 
 void Server::addSession(std::pair<int, Session *> pair) {
     _sessions.insert(pair);
+
 }
 
 void Server::registerSignal() {

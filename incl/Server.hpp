@@ -21,7 +21,7 @@
 #include "Session.hpp"
 #include "MimeType.hpp"
 
-#define MAX_AWAIT_CONN 10000
+#define MAX_AWAIT_CONN 900
 #define MAX_KQUEUE_EV 1000
 
 class Socket;
@@ -44,7 +44,6 @@ public:
 
     Server(const Server &rhs);
 
-    //@todo create destructor
     ~Server();
 
     Server(const std::string &config_file);
@@ -67,7 +66,7 @@ public:
 
     void removeExpiredSessions();
 
-    void removeSession(int fd);
+    void serverRemoveSession(int fd);
 
     class ServerException : public std::exception {
         const std::string m_msg;

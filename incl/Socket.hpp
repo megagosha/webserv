@@ -44,7 +44,7 @@ private:
 	uint16_t _port;
 	VirtualServer *_default_config;
 	std::map<int, Session*> _sessions;
-	std::map<std::string, VirtualServer> _virtual_servers; //@todo change container
+	std::map<std::string, VirtualServer> _virtual_servers;
     Server *_serv;
 	Socket();
 
@@ -74,14 +74,12 @@ public:
 
 	void appendVirtualServer(const VirtualServer &virtual_server);
 
-	void removeSession(int fd);
+	void socketRemoveSession(int fd);
 
 	std::pair<int, Session *> acceptConnection(void);
 
 	void clear();
 
-	//@todo make sure virtual servers in each socket have unique server_name (only one empty server name per ip:port pair)
-	//@todo validate that each virtual server has at least one location and server root
 	class SocketException : public std::exception
 	{
 		const char *m_msg;

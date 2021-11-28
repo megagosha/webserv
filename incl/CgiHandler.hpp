@@ -19,8 +19,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "HttpRequest.hpp"
-#include "ISubscriber.hpp"
-#include "IManager.hpp"
 
 class CgiHandler {
 private:

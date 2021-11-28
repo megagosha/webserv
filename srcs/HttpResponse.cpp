@@ -202,6 +202,11 @@ HttpResponse::processPutRequest(const VirtualServer *serv, const Location *loc, 
 //                     std::ios::out | std::ios::binary);
     if (rf) {
         rf.write(req->getBody().data(), req->getBody().size());
+        if(rf.bad())
+        {
+            rf.close();
+            setError(HTTP_INTERNAL_SERVER_ERROR, serv);
+        }
         rf.close();
         insertHeader("Content-Location", req->getRequestUri());
         return;
@@ -322,6 +327,14 @@ void HttpResponse::setError(HTTPStatus code, const VirtualServer *server) {
     _body_size = _body.size();
 }
 
+void freeEnv(char **env)
+{
+    for (int i = 0; env[i] != nullptr; ++i)
+    {
+        free(env[i]);
+    }
+    free(env);
+}
 HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
     char  *argv[2];
     int   in_pipe[2];
@@ -336,14 +349,13 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
     argv[0] = const_cast<char *>(req->getNormalizedPath().data());
     argv[1] = nullptr;
 
-    //@todo rewrite pipe to use exceptions instead;
     if (pipe(in_pipe) < 0) {
-        free(env);
+        freeEnv(env);
         std::cerr << "allocating pipe for child input redirect failed" << std::endl;
         return (HTTP_INTERNAL_SERVER_ERROR);
     }
     if (pipe(out_pipe) < 0) {
-        free(env);
+        freeEnv(env);
         close(in_pipe[PIPE_READ]);
         close(in_pipe[PIPE_WRITE]);
         std::cerr << "allocating pipe for child output redirect failed" << std::endl;
@@ -363,9 +375,9 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
         res = execve(_cgi->getCgiPath().data(), argv, env);
         exit(res);
     } else if (child_pid > 0) {
-        free(env);
+        freeEnv(env);
         close(in_pipe[PIPE_READ]);
-        if (req->getContentLength() > 0)//@todo add pipe to kqueue here
+        if (req->getContentLength() > 0)
             _cgi->setRequestPipe(in_pipe[PIPE_WRITE]);
         else
             close(in_pipe[PIPE_WRITE]);
@@ -373,7 +385,7 @@ HttpResponse::HTTPStatus HttpResponse::executeCgi(HttpRequest *req) {
         _cgi->setCgiPid(child_pid);
         _cgi->setResponsePipe(out_pipe[PIPE_READ]);
     } else {
-        free(env);
+        freeEnv(env);
         close(in_pipe[PIPE_READ]);
         close(in_pipe[PIPE_WRITE]);
         close(out_pipe[PIPE_READ]);
@@ -419,7 +431,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         else
             to_send = _headers_vec.size() - pos;
         res         = send(fd, _headers_vec.data() + pos, to_send, 0);
-        if (res <= 0)
+        if (res < 0 || (res == 0 && bytes > 0))
             return (-1);
         _pos += res;
         bytes -= res;
@@ -435,7 +447,7 @@ int HttpResponse::sendResponse(int fd, HttpRequest *req, size_t bytes) {
         else
             to_send = _body.size() - pos;
         res         = send(fd, _body.data() + pos, to_send, 0);
-        if (res <= 0)
+        if (res < 0 || (res == 0 && bytes > 0))
             return (-1);
         _pos += res;
     }
@@ -558,13 +570,14 @@ bool HttpResponse::writeToCgi(HttpRequest *req, size_t bytes) {
 }
 
 bool HttpResponse::readCgi(size_t bytes, bool eof) {
-    char tmp[1048576];//@todo replace constant with define (was bytes - VLA)
+    char tmp[1048576];
     int  res;
     int  fd = _cgi->getResponsePipe();
 
     res = read(fd, &tmp, bytes);
-    if (res < 0)
+    if (res < 0) {
         return (false);
+    }
     _body.append(tmp, bytes);
     std::string::size_type pos;
     if (!_cgi->isHeadersParsed() && (pos = _body.find("\r\n\r\n")) != std::string::npos) {
@@ -576,7 +589,7 @@ bool HttpResponse::readCgi(size_t bytes, bool eof) {
         _cgi->setHeadersParsed(true);
         _body.erase(_body.begin(), _body.begin() + pos + 4);
     }
-    if (eof) {
+    if (eof || res == 0) {
         _body_size = _body.size();
         insertHeader("Content-Length", std::to_string(_body_size));
         setResponseString("HTTP/1.1", HTTP_OK);

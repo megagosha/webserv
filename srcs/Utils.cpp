@@ -425,6 +425,7 @@ std::ostream &operator<<(std::ostream &out, const Session &c) {
     if (LOG_LEVEL > 0) {
         out << FG_LIGHT_CYAN <<  ">>>> [Session] <<<<" << std::endl;
         out << "Ip: " << c.getClientIp() << " port: " << c.getClientPort() << std::endl;
+//        out << "fd " << c.getFd() << std::endl;
     }
     if (LOG_LEVEL > 1) {
         time_t t = c.getConnectionTimeout();

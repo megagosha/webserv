@@ -18,7 +18,8 @@ Session::Session(int socket_fd, Socket *server_socket, sockaddr addr, IManager *
 //    std::cout << "Session created:" << std::endl << "Client ip: " << getClientIp() << " port: " << getClientPort()
 //              << std::endl;
     mng->subscribe(socket_fd, EVFILT_READ, this);
-    std::cout << "created " << *this;
+    if (LOG_LEVEL > 0)
+        std::cout << "created " << *this;
 }
 
 Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_socket), _s_addr(),
@@ -30,7 +31,8 @@ Session::Session(const Session &rhs) : _fd(rhs._fd), _server_socket(rhs._server_
 }
 
 Session::~Session(void) {
-    std::cout << "closed" << *this;
+    if (LOG_LEVEL > 0)
+        std::cout << "destroyed" << *this;
     if (_response != nullptr)
         delete _response;
     if (_request != nullptr)
@@ -70,7 +72,6 @@ std::string Session::getClientIp() const {
 void Session::setResponse(HttpResponse *response) {
 
     if (_response != nullptr) {
-//		delete _response; @todo fix memory err
         _response = nullptr;
         return;
     }
@@ -111,6 +112,7 @@ void Session::parseRequest(size_t bytes) {
         _buffer.insert(_buffer.end(), res.begin(), res.end());
     }
     catch (std::exception &e) {
+        end();
         return;
     }
     if (_request == nullptr) {
@@ -141,7 +143,6 @@ void Session::parseRequest(size_t bytes) {
 void Session::prepareResponse() {
     std::string path;
 
-    //@todo null check
     if (_response != nullptr)
         _response->responsePrepare(_request, _mng, getIpFromSock());
     if (_keep_alive) {
@@ -185,9 +186,14 @@ bool Session::shouldClose() {
 }
 
 void Session::end() {
+    _mng->unsubscribe(_fd, EVFILT_READ);
     processPreviousStatus(_status);
+    if(_response != nullptr && _response->getCgi() != nullptr) {
+        _mng->unsubscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE);
+        _mng->unsubscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ);
+    }
     close(_fd);
-    _server_socket->removeSession(_fd);
+    _server_socket->socketRemoveSession(_fd);
 }
 
 short Session::getStatus() const {
@@ -211,7 +217,8 @@ void Session::clearBuffer(void) {
 }
 
 void Session::processResponse(size_t bytes, bool eof) {
-    if (eof || _response->sendResponse(_fd, _request, bytes) == 1) {
+    int res = 0;
+    if (eof || (res = _response->sendResponse(_fd, _request, bytes)) == 1) {
         std::cout << *_response;
         if (!_keep_alive)
             _status = CLOSING;
@@ -226,6 +233,8 @@ void Session::processResponse(size_t bytes, bool eof) {
             _response = nullptr;
         }
     }
+    else if (res == -1)
+        end();
     std::time(&_connection_timeout);
 }
 
@@ -248,22 +257,20 @@ void Session::processCurrentStatus(short status) {
 }
 
 void Session::processPreviousStatus(short prev_status) {
-    if (prev_status == AWAIT_NEW_REQ)
-        _mng->unsubscribe(_fd, EVFILT_READ);
-    else if (prev_status == CGI_PROCESSING) {
+    if (prev_status == CGI_PROCESSING) {
         if (!_request->getBody().empty())
             _mng->unsubscribe(_response->getCgi()->getRequestPipe(), EVFILT_WRITE);
         _mng->unsubscribe(_response->getCgi()->getResponsePipe(), EVFILT_READ);
         return;
-    } else if (prev_status == SENDING) {
-        _mng->unsubscribe(_fd, EVFILT_WRITE);
-        return;
     }
+//    } else if (prev_status == SENDING) {
+//        _mng->unsubscribe(_fd, EVFILT_WRITE);
+//        return;
+//    }
 }
 
 void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unused uint32_t flags, bool eof,
                            __unused Server *serv) {
-    //@todo
     short prev_status = _status;
 
     // close if eof on write socket or eof on read while request was not parsed completely;
@@ -289,6 +296,9 @@ void Session::processEvent(int fd, size_t bytes_available, int16_t filter, __unu
     }
 }
 
+int Session::getFd() const {
+    return _fd;
+}
 time_t Session::getConnectionTimeout() const {
     return _connection_timeout;
 }

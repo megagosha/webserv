@@ -57,7 +57,6 @@ Socket::Socket(const Socket &rhs) : _socket_fd(rhs._socket_fd),
 Socket::~Socket() {
     for (std::map<int, Session *>::iterator it = _sessions.begin(); it != _sessions.end(); ++it) {
         it->second->end();
-        delete it->second;
     }
 }
 
@@ -94,21 +93,20 @@ std::pair<int, Session *> Socket::acceptConnection() {
     new_fd = accept(_socket_fd, &s_addr,
                     &s_len); //@todo To ensure that accept() never blocks, the passed socket sockfd needs to have the O_NONBLOCK
     if (new_fd < 0)
-        throw SocketException("Failed to open connection");
+        throw SocketException(strerror(errno));
     Session *sess = new Session(new_fd, this, s_addr, _serv);
-
     _sessions.insert(std::make_pair(new_fd, sess));
     return (std::make_pair(new_fd, sess));
 }
 
 
-void Socket::removeSession(int fd) {
-    std::map<int, Session*>::iterator it;
+void Socket::socketRemoveSession(int fd) {
+    std::map<int, Session *>::iterator it;
     it = _sessions.find(fd);
     if (it != _sessions.end())
         delete it->second;
     _sessions.erase(fd);
-    _serv->removeSession(fd);
+    _serv->serverRemoveSession(fd);
 }
 
 void Socket::appendVirtualServer(const VirtualServer &virtual_server) {
@@ -169,23 +167,21 @@ const std::map<std::string, VirtualServer> &Socket::getVirtualServers() const {
     return _virtual_servers;
 }
 
-void Socket::processEvent(__unused int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags,
-                          __unused bool eof, Server *serv) {
+void
+Socket::processEvent(__unused int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags,
+                     __unused bool eof, Server *serv) {
     std::pair<int, Session *> res;
-    if (_sessions.size() > 2) //@todo 21school tester workaround (should be removed)
-        return;
+//    if (_sessions.size() > 2) //@todo 21school tester workaround (should be removed)
+//        return;
     try {
         res = acceptConnection();
         serv->addSession(res);
     }
     catch (std::exception &e) {
-        std::cerr << "Accept connection failed" << std::endl;
+        std::cerr << "Accept connection failed " << e.what() << std::endl;
     }
 }
 
-
-////@todo make sure virtual servers in each socket have unique server_name (only one empty server name per ip:port pair)
-////@todo validate that each virtual server has at least one location and server root
 
 Socket::SocketException::SocketException(const char *msg) : m_msg(msg) {}
 

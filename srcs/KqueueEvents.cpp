@@ -46,23 +46,17 @@ void KqueueEvents::addFd(int fd, short type) {
 
     uint64_t t_fd   = fd;
     uint32_t fflags = 0;
-    if (type == EVFILT_PROC)
-        fflags = NOTE_EXIT;
     EV_SET(_w_event, t_fd, type, EV_ADD, fflags, 0, NULL);
     if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1) {
         std::cout << strerror(errno) << std::endl;
         throw KqueueException();
     }
-}
-
-void KqueueEvents::deleteFd(int fd, short type) {
-    _fds.erase(fd);
-    EV_SET(_w_event, fd, type, EV_DELETE, 0, 0, NULL);
-    if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1) {
-        if (type != EVFILT_PROC)
+    if (type == EVFILT_WRITE) {
+        if (kevent(_queue_fd, _w_event, 1, nullptr, 0, nullptr) == -1) {
+            std::cout << strerror(errno) << std::endl;
             throw KqueueException();
+        }
     }
-
 }
 
 std::pair<int, struct kevent *> KqueueEvents::getUpdates(int tout) {

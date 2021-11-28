@@ -15,7 +15,7 @@ SRC_FILES	= main.cpp \
 NAME	= webserv
 
 #CC		= clang++ -fsanitize=address
-CC		= clang++ -g -fsanitize=address
+CC		= clang++ -O3
 RM		= rm -f
 
 CFLAGS	= -Wall -Wextra -Werror -std=c++98 -pedantic
@@ -32,7 +32,7 @@ all:		$(NAME)
 
 -include $(DEPS)
 $(OBJS_DIR)/%.o: $(SRCS_DIR)/%.cpp | $(OBJS_DIR)
-	$(CC) -g $(CFLAGS) -I$(INCLUDES_DIR) -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) -I$(INCLUDES_DIR) -MMD -MP -c -o $@ $<
 
 $(OBJS_DIR):
 	mkdir -p $(OBJS_DIR)

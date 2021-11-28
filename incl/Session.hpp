@@ -27,6 +27,10 @@ class ISubscriber;
 class Session : public ISubscriber {
 private:
     int              _fd;
+public:
+    int getFd() const;
+
+private:
     Socket           *_server_socket;
     HttpResponse     *_response;
     HttpRequest      *_request;
@@ -39,7 +43,7 @@ public:
 
 private:
     //how long to live before initial http request; //@todo add timeout header
-    static const int HTTP_DEFAULT_TIMEOUT = 5;
+    static const int HTTP_DEFAULT_TIMEOUT = 2;
     std::string      _buffer;
     IManager         *_mng;
 public:
