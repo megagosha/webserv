@@ -1,18 +1,20 @@
-#21 school webserv
+# 21 school webserv
 Simple http/1.1 server based on kqueue. Supported methods: GET, POST, PUT, DELETE.
 
 Other features: keep-alive, chunked-encoding, basic cgi, mime types config, virtual servers, redirects, client body size limit, file upload, custom error pages, directory listing, index file can be specified, allowed methods can be specified. 
 
 Limited testing was performed. Tested on Mac OS only
-#Usage
+## Usage
 
-Replace /FULL_PATH_TO_FILE in config.
+Replace "/FULL_PATH_TO_FILE" in webserv_config_example.
 cgi_pass should be executable. Delete if not used.
 
+```
 make && ./webserv path_to_config
+```
 
 
-#Subject requirements
+## Subject requirements
 You can use every macro and define like FD_SET,FD_CLR,FD_ISSET,FD_ZERO (understanding what they do and how they do it is very useful.)
         You must write an HTTP server in C++ 98.
 * If you need more C functions, you can use them but always prefer C++.
@@ -24,8 +26,6 @@ You can use every macro and define like FD_SET,FD_CLR,FD_ISSET,FD_ZERO (understa
 headers and answer behaviors.
 * In the subject and the scale we will mention poll but you can use equivalent like select, kqueue, epoll.
 * It must be non-blocking and use only 1 poll (or equivalent) for all the IO between the client and the server (listens includes).
-3
-Webserv This is when you finally understand why a URL starts with HTTP
 * poll (or equivalent) should check read and write at the same time.
 * Your server should never block and the client should be bounce properly if necessary.
 * You should never do a read operation or a write operation without going through poll (or equivalent).
@@ -44,8 +44,8 @@ Webserv This is when you finally understand why a URL starts with HTTP
 * Stress tests your server it must stay available at all cost.
 * Your server can listen on multiple ports (See config file).
 
-Config requirments
-choose the port and host of each "server"
+### Config requirments:
+* choose the port and host of each "server"
 * setup the server_names or not
 * The first server for a host:port will be the default for this host:port (meaning it will answer to all request that doesn’t belong to an other server)
 * setup default error pages
