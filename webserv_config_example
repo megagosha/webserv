@@ -45,12 +45,6 @@ server {
         root /FULL_PATH_TO_FILE/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
         cgi_pass /opt/homebrew/opt/php@7.4/bin/php-cgi; #IS NOT VALID CGI specify full path
     }
-
-    location *.bla {
-        root /FULL_PATH_TO_FILE/webserv/www/final/; #FOR CGI PATH SHOULD BE ABSOLUTE
-        cgi_pass /Users/megagosha/Downloads/cgi_tester; #IS NOT VALID CGI specify full path
-        client_max_body_size 300000000;
-    }
 }
 
 server {
@@ -119,13 +113,6 @@ server {
         client_max_body_size 10000000;
         file_upload on;
         methods GET PUT DELETE;
-    }
-
-    location *.bla {
-        root /FULL_PATH_TO_FILE/webserv/www/42_tester/YoupiBanane/; #FOR CGI PATH SHOULD BE ABSOLUTE
-        cgi_pass /FULL_PATH_TO_FILE/webserv/cgi_tester;
-        client_max_body_size 300000000;
-        methods POST GET;
     }
 
   location /post_body
