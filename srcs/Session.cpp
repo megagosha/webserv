@@ -173,7 +173,6 @@ bool Session::readCgi(size_t bytes, bool eof) {
 }
 
 bool Session::shouldClose() {
-
     if ((!isKeepAlive() && _status == AWAIT_NEW_REQ) || _status == CLOSING)
         return (true);
     time_t cur_time;

@@ -91,7 +91,7 @@ std::pair<int, Session *> Socket::acceptConnection() {
     socklen_t       s_len;
 
     new_fd = accept(_socket_fd, &s_addr,
-                    &s_len); //@todo To ensure that accept() never blocks, the passed socket sockfd needs to have the O_NONBLOCK
+                    &s_len);
     if (new_fd < 0)
         throw SocketException(strerror(errno));
     Session *sess = new Session(new_fd, this, s_addr, _serv);
@@ -171,8 +171,7 @@ void
 Socket::processEvent(__unused int fd, __unused size_t bytes_available, __unused int16_t filter, __unused uint32_t flags,
                      __unused bool eof, Server *serv) {
     std::pair<int, Session *> res;
-//    if (_sessions.size() > 2) //@todo 21school tester workaround (should be removed)
-//        return;
+
     try {
         res = acceptConnection();
         serv->addSession(res);
